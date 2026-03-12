@@ -38,7 +38,7 @@ const ProjectDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
-  const API_BASE_URL = 'http://localhost:8000';
+  const API_BASE_URL = 'http://localhost:8001';
 
   // دالة لجلب رابط الصورة
   const getImageUrl = (imagePath?: string): string => {
