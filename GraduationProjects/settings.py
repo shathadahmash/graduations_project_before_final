@@ -14,10 +14,17 @@ SECRET_KEY = 'django-insecure--q@f3psho5s*_0)nc$5px%hb&11*4!p8p*=bee!e54(udg9bxv
 
 DEBUG = True
 
+
+# -------------------------
+# ALLOWED HOSTS
+# -------------------------
 ALLOWED_HOSTS = [
-    "back.graduation-projects.ycithe.net",
-    "front.graduation-projects.ycithe.net",
+    'localhost',
+    '127.0.0.1',
+    'back.graduation-projects.ycithe.net',
+    'front.graduation-projects.ycithe.net',
 ]
+
 
 # -------------------------
 # INSTALLED APPS
@@ -60,43 +67,41 @@ SITE_ID = 1
 # -------------------------
 # CORS & CSRF
 # -------------------------
-
-# Allowed hosts for Django
-ALLOWED_HOSTS = [
-    "http://localhost:5173",
-    '127.0.0.1',
-    'localhost',
-    'localhost:8000',
-    'back.graduation-projects.ycithe.net',
-    'front.graduation-projects.ycithe.net',
-]
-
-# CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-    'https://front.graduation-projects.ycithe.net',
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://front.graduation-projects.ycithe.net",
 ]
 
-# CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-    'https://front.graduation-projects.ycithe.net',
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "https://front.graduation-projects.ycithe.net",
 ]
 
-# Allow credentials (cookies) for cross-origin requests
 CORS_ALLOW_CREDENTIALS = True
 
-# Cookies configuration
-CSRF_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
 
-# Proxy and SSL settings
+# -------------------------
+# COOKIE SETTINGS
+# -------------------------
+if DEBUG:
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = 'Lax'
+else:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SAMESITE = 'None'
+
+
+# Proxy settings (for production)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
@@ -124,6 +129,7 @@ MIDDLEWARE = [
 
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'GraduationProjects.urls'
 
@@ -158,22 +164,18 @@ ASGI_APPLICATION = 'GraduationProjects.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        # 'NAME': 'graduation_projects',
-        # 'USER': 'fgps',
-        # 'PASSWORD': '9Q8$w^Lueny!r@m9&we4n',
-        # 'HOST': 'ycithe.net',
-        # 'PORT': '3308',
+
         'NAME': 'graduationprojects_db',
         'USER': 'root',
         'PASSWORD': '',
-        'HOST': 'localhost',        
+        'HOST': 'localhost',
         'PORT': '3307',
+
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     }
 }
-
 
 USE_TZ = False
 
@@ -182,6 +184,7 @@ USE_TZ = False
 # AUTHENTICATION
 # -------------------------
 AUTH_USER_MODEL = 'core.User'
+
 REST_USE_JWT = True
 
 REST_AUTH = {
@@ -193,7 +196,12 @@ REST_AUTH = {
     'LOGOUT_ON_GET': True,
 }
 
+
+# -------------------------
+# JWT SETTINGS
+# -------------------------
 SIMPLE_JWT = {
+
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
 
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -206,6 +214,9 @@ SIMPLE_JWT = {
 }
 
 
+# -------------------------
+# DRF SETTINGS
+# -------------------------
 REST_FRAMEWORK = {
 
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -219,23 +230,17 @@ REST_FRAMEWORK = {
     ],
 
     'DEFAULT_PERMISSION_CLASSES': [
-
         'rest_framework.permissions.AllowAny',
-
     ],
 
     'DEFAULT_RENDERER_CLASSES': [
-
         'rest_framework.renderers.JSONRenderer',
-
         'rest_framework.renderers.BrowsableAPIRenderer',
-
     ],
 
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
-
 }
 
 
