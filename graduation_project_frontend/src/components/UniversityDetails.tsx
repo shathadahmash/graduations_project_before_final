@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { data, Link, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // add this at the top
 import api, { API_ENDPOINTS } from "../services/api.ts";
 import { projectService } from "../services/projectService.ts"; // <-- import your project service
 import ProjectSearch from "./ProjectUniversitySearch.tsx"; // adjust path as needed
@@ -275,12 +276,12 @@ const UniversityDetails: React.FC = () => {
                       عرض الأقسام
                     </button>
 
-                    <Link
-                      to={`/colleges/${college.id}/projects`}
+                    <button
+                      onClick={() => navigate(`/ProjectCollegeSearch/${college.id}`, { state: { college } })}
                       className="text-center bg-[#31257D] text-white py-2 rounded-lg text-sm font-medium transition-all duration-300 group-hover:bg-white group-hover:text-[#31257D]"
                     >
                       مشاريع الكلية
-                    </Link>
+                    </button>
                   </div>
                 </div>
 

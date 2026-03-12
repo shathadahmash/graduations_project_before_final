@@ -37,6 +37,10 @@ class ProjectFilter(django_filters.FilterSet):
     department = django_filters.NumberFilter(
         field_name="groups__program_groups__program__department__department_id"
     )
+    program = django_filters.NumberFilter(
+        field_name="groups__program_groups__program__program_id"
+    )
+
     supervisor = django_filters.NumberFilter(method='filter_supervisor')
     co_supervisor = django_filters.NumberFilter(method='filter_co_supervisor')
     year = django_filters.NumberFilter(field_name="start_date")

@@ -29,7 +29,14 @@ export interface Project {
 
   college_name?: string | null;
   university_name?: string | null;
+  department_name?: string | null;
+  program_name?: string | null;
 
+  college_id?: number | null;
+  university_id?: number | null;
+  department_id?: number | null;
+  program_id?: number | null;
+  
   supervisor_name?: string | null;
   co_supervisor_name?: string | null;
 

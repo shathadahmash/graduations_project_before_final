@@ -22,7 +22,10 @@ class ProjectSerializer(serializers.ModelSerializer):
     university_name = serializers.SerializerMethodField()
     branch_id = serializers.SerializerMethodField()
     branch_name = serializers.SerializerMethodField()
-
+    department_id = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    program_id = serializers.SerializerMethodField()
+    program_name = serializers.SerializerMethodField()
     # URLs
     logo_url = serializers.SerializerMethodField()
     documentation_url = serializers.SerializerMethodField()
@@ -39,7 +42,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'branch_id', 'branch_name',
             'start_date', 'end_date', 'field', 'tools',
             'logo', 'logo_url', 'documentation', 'documentation_url',
-            'supervisor_name', 'co_supervisor_name', 'created_by'
+            'supervisor_name', 'co_supervisor_name', 'created_by','department_id','department_name','program_id','program_name'
         ]
 
     # --- Supervisor logic ---
@@ -84,6 +87,18 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_college_id(self, obj):
         return getattr(obj.college, 'cid', None)  # custom PK for College
+
+    def get_department_name(self, obj):
+        return getattr(obj.department, 'name', None)
+
+    def get_program_id(self, obj):
+        return getattr(obj.program, 'pid', None)
+    
+    def get_department_id(self, obj):
+        return getattr(obj.department, 'department_id', None)  # custom PK for Department
+
+    def get_program_name(self, obj):
+        return getattr(obj.program, 'p_name', None)
 
     def get_college_name(self, obj):
         return getattr(obj.college, 'name_ar', None)
