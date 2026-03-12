@@ -1,0 +1,296 @@
+from pathlib import Path
+from datetime import timedelta
+import os
+
+# -------------------------
+# BASE
+# -------------------------
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+SECRET_KEY = 'django-insecure--q@f3psho5s*_0)nc$5px%hb&11*4!p8p*=bee!e54(udg9bxv'
+
+DEBUG = True
+
+ALLOWED_HOSTS = [
+    "back.graduation-projects.ycithe.net",
+    "front.graduation-projects.ycithe.net",
+]
+
+# -------------------------
+# INSTALLED APPS
+# -------------------------
+INSTALLED_APPS = [
+    'daphne',
+    'channels',
+
+    'corsheaders',
+
+    'core',
+
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    'django_filters',
+
+    'rest_framework',
+    'rest_framework.authtoken',
+
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+
+    'django.contrib.sites',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+
+    'django_extensions',
+]
+
+SITE_ID = 1
+
+
+# -------------------------
+# CORS & CSRF
+# -------------------------
+
+# Allowed hosts for Django
+ALLOWED_HOSTS = [
+    "http://localhost:5173",
+    '127.0.0.1',
+    'localhost',
+    'localhost:8000',
+    'back.graduation-projects.ycithe.net',
+    'front.graduation-projects.ycithe.net',
+]
+
+# CORS settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'https://front.graduation-projects.ycithe.net',
+]
+
+# CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'https://front.graduation-projects.ycithe.net',
+]
+
+# Allow credentials (cookies) for cross-origin requests
+CORS_ALLOW_CREDENTIALS = True
+
+# Cookies configuration
+CSRF_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
+# Proxy and SSL settings
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
+
+# -------------------------
+# MIDDLEWARE
+# -------------------------
+MIDDLEWARE = [
+
+    'corsheaders.middleware.CorsMiddleware',
+
+    'django.middleware.security.SecurityMiddleware',
+
+    'django.contrib.sessions.middleware.SessionMiddleware',
+
+    'django.middleware.common.CommonMiddleware',
+
+    'django.middleware.csrf.CsrfViewMiddleware',
+
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    'allauth.account.middleware.AccountMiddleware',
+
+    'django.contrib.messages.middleware.MessageMiddleware',
+
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'GraduationProjects.urls'
+
+
+# -------------------------
+# TEMPLATES
+# -------------------------
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+
+                'django.contrib.auth.context_processors.auth',
+
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'GraduationProjects.wsgi.application'
+ASGI_APPLICATION = 'GraduationProjects.asgi.application'
+
+
+# -------------------------
+# DATABASE
+# -------------------------
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        # 'NAME': 'graduation_projects',
+        # 'USER': 'fgps',
+        # 'PASSWORD': '9Q8$w^Lueny!r@m9&we4n',
+        # 'HOST': 'ycithe.net',
+        # 'PORT': '3308',
+        'NAME': 'graduationprojects_db',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': 'localhost',        
+        'PORT': '3307',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+    }
+}
+
+
+USE_TZ = False
+
+
+# -------------------------
+# AUTHENTICATION
+# -------------------------
+AUTH_USER_MODEL = 'core.User'
+REST_USE_JWT = True
+
+REST_AUTH = {
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': 'access_token',
+    'JWT_AUTH_REFRESH_COOKIE': 'refresh_token',
+    'JWT_AUTH_HTTPONLY': False,
+    'OLD_PASSWORD_FIELD_ENABLED': True,
+    'LOGOUT_ON_GET': True,
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+
+    'ROTATE_REFRESH_TOKENS': False,
+
+    'BLACKLIST_AFTER_ROTATION': True,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+
+REST_FRAMEWORK = {
+
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+
+        'rest_framework.authentication.SessionAuthentication',
+
+    ],
+
+    'DEFAULT_PERMISSION_CLASSES': [
+
+        'rest_framework.permissions.AllowAny',
+
+    ],
+
+    'DEFAULT_RENDERER_CLASSES': [
+
+        'rest_framework.renderers.JSONRenderer',
+
+        'rest_framework.renderers.BrowsableAPIRenderer',
+
+    ],
+
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+
+}
+
+
+# -------------------------
+# STATIC FILES
+# -------------------------
+STATIC_URL = '/static/'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# -------------------------
+# EMAIL
+# -------------------------
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@gpms.edu.ye'
+
+
+# -------------------------
+# CHANNELS (WebSocket)
+# -------------------------
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+
+        'CONFIG': {
+            'hosts': [('localhost', 6379)],
+        },
+    },
+}
+
+
+# -------------------------
+# SERIALIZERS
+# -------------------------
+REST_AUTH_SERIALIZERS = {
+    'USER_DETAILS_SERIALIZER': 'core.serializers.UserSerializer'
+}
+
+
+# -------------------------
+# CELERY
+# -------------------------
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+
+
+# -------------------------
+# CACHES
+# -------------------------
+CACHES = {
+    'default': {
+
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+
+        'LOCATION': 'unique-snowflake'
+
+    }
+}
