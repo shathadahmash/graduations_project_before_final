@@ -30,7 +30,6 @@ interface Project {
 }
 
 interface FilterOptions {
-  universities: { id: number; name: string; logo?: string }[];
   colleges: { id: number; name: string; university_id?: number }[];
   departments: { id: number; name: string; college_id?: number }[];
   supervisors: { id: number; name: string }[];
@@ -43,14 +42,13 @@ interface FilterOptions {
 
 interface Props {
   universityId: number;
-  colleges: { id: number; name: string; university_id?: number }[];
 }
 
-const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
+const ProjectSearch: React.FC<Props> = ({ universityId }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
-    project_university: universityId.toString(),
+    university_id: universityId,
     college: '',
     department: '',
     year: '',
@@ -62,8 +60,7 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    universities: [],
-    colleges: colleges || [],
+    colleges: [],
     departments: [],
     supervisors: [],
     co_supervisors: [],
@@ -88,35 +85,41 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
     return Array.from(unique.values());
   };
 
+  // ------------------ Filter Options ------------------
   const fetchFilterOptions = useCallback(async () => {
     try {
       const options = await projectService.getFilterOptions();
       const departments = await userService.getDepartments();
-      setFilterOptions(prev => ({
-        ...prev,
+      const colleges = await userService.getColleges(); // fetch all colleges
+
+      setFilterOptions({
+        colleges: removeDuplicatesById(colleges || []).filter(c => c.university_id === universityId),
         departments: removeDuplicatesById(departments || []),
         supervisors: removeDuplicatesById(options.supervisors || []),
         co_supervisors: removeDuplicatesById(options.co_supervisors || []),
         years: Array.from(new Set((options.years || []).map((y: string) => y.toString().substring(0, 4)))).sort((a, b) => parseInt(b) - parseInt(a)),
         fields: Array.from(new Set(options.fields || [])),
-        tools: Array.from(new Set(options.tools || []))
-      }));
+        tools: Array.from(new Set(options.tools || [])),
+        project_types: [
+          { value: 'Governmental', label: 'حكومي' },
+          { value: 'External', label: 'شركات خارجية' },
+          { value: 'Proposed', label: 'مقترح' }
+        ]
+      });
     } catch (err) {
-      console.error('خطأ في جلب خيارات الفلاتر', err);
+      console.error('Error fetching filter options', err);
     }
-  }, []);
+  }, [universityId]);
 
+  // ------------------ Fetch Projects ------------------
   const fetchProjects = useCallback(async () => {
-    if (!filters.project_university) {
-      setProjects([]);
-      return;
-    }
+    if (!filters.university_id) return setProjects([]);
     try {
       setLoading(true);
-      const params: any = { limit: 50, project_university: Number(filters.project_university) };
+      const params: any = { limit: 50, university_id: filters.university_id };
       if (searchQuery.trim()) params.search = searchQuery.trim();
-      if (filters.college) params.college = Number(filters.college);
-      if (filters.department) params.department = Number(filters.department);
+      if (filters.college) params.college = filters.college;
+      if (filters.department) params.department = filters.department;
       if (filters.year) params.year = filters.year;
       if (filters.field) params.field = filters.field;
       if (filters.tools) params.tools = filters.tools;
@@ -142,7 +145,6 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
         program_name: p.program?.p_name || p.program_name,
         start_date: p.start_date,
         end_date: p.end_date,
-        external_company: p.external_company?.name,
         supervisor_name: p.supervisor_name || 'لا يوجد مشرف',
         co_supervisor_name: p.co_supervisor_name || 'لا يوجد مشرف مساعد',
         logo: p.logo || '/default-project-logo.png',
@@ -150,37 +152,14 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
         groups: p.groups || []
       })));
     } catch (err) {
-      console.error('خطأ في جلب المشاريع', err);
+      console.error('Error fetching projects', err);
       setProjects([]);
     } finally {
       setLoading(false);
     }
   }, [filters, searchQuery]);
 
-  const handleQuickView = (project: Project) => {
-    setSelectedProject(project);
-    const students =
-      project.groups?.flatMap(g =>
-        g.members?.map(m => ({
-          name: m.user_detail?.name || `${m.user_detail?.first_name || ''} ${m.user_detail?.last_name || ''}`.trim()
-        })) || []
-      ) || [];
-    setSelectedProjectStudents(students);
-  };
-
-  const getProjectTypeBadge = (type: string) => {
-    switch (type) {
-      case 'Proposed': return { label: 'مقترح', bg: 'bg-purple-100', color: 'text-purple-700' };
-      case 'Governmental': return { label: 'حكومي', bg: 'bg-blue-100', color: 'text-blue-700' };
-      case 'External': return { label: 'شركات خارجية', bg: 'bg-green-100', color: 'text-green-700' };
-      default: return { label: 'غير محدد', bg: 'bg-gray-100', color: 'text-gray-700' };
-    }
-  };
-
-  const extractYear = (date: number) => date ? new Date(date).getFullYear() : 'غير محدد';
-  const getActiveFiltersCount = () => Object.values(filters).filter(v => v).length;
-  const clearAllFilters = () => setFilters({ ...filters, college: '', department: '', year: '', field: '', tools: '', supervisor: '', co_supervisor: '', project_type: '' });
-
+  // ------------------ Effects ------------------
   useEffect(() => { fetchFilterOptions(); }, [fetchFilterOptions]);
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
   useEffect(() => {
@@ -189,13 +168,24 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
     return () => clearTimeout(searchTimeoutRef.current);
   }, [searchQuery, filters, fetchProjects]);
 
+  // ------------------ Quick View ------------------
+  const handleQuickView = (project: Project) => {
+    setSelectedProject(project);
+    const students = project.groups?.flatMap(g =>
+      g.members?.map(m => ({
+        name: m.user_detail?.name || `${m.user_detail?.first_name || ''} ${m.user_detail?.last_name || ''}`.trim()
+      })) || []
+    ) || [];
+    setSelectedProjectStudents(students);
+  };
+
+  // ------------------ Render ------------------
   return (
     <div className="min-h-screen bg-[#F8FAFC]" dir="rtl">
       <Navbar />
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-bold text-[#31257D] mb-4">البحث عن مشاريع التخرج</h1>
+        <h1 className="text-3xl font-bold text-[#31257D] mb-4">مشاريع الجامعة</h1>
 
-        {/* Search & Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
           <input
             type="text"
@@ -206,121 +196,51 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
           />
           <select value={filters.college} onChange={e => setFilters(f => ({ ...f, college: e.target.value }))}>
             <option value="">الكلية</option>
-            {filterOptions.colleges
-              .filter(c => c.university_id === Number(filters.project_university))
-              .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {filterOptions.colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
 
-        {/* Projects Results */}
         {loading ? (
-          <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#31257D]"></div>
-            <p className="mt-4 text-[#4A5568]">جاري تحميل المشاريع...</p>
-          </div>
+          <div className="text-center py-20">جاري تحميل المشاريع...</div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-[#31257D]/5">
-            <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 bg-[#31257D]/10 rounded-full flex items-center justify-center">
-                <FiSearch className="text-[#31257D]" size={32} />
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-[#31257D] mb-2">لا توجد مشاريع مطابقة</h3>
-            <p className="text-[#4A5568] mb-4 max-w-md mx-auto">
-              لم نتمكن من العثور على أي مشاريع تطابق معايير البحث الخاصة بك.
-            </p>
-          </div>
+          <div className="text-center py-16">لا توجد مشاريع مطابقة</div>
         ) : (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map(p => {
-              const badge = getProjectTypeBadge(p.project_type);
-              return (
-                <div key={p.project_id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-[#31257D]/10 flex flex-col h-full group">
-                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#31257D]/5 to-[#4937BF]/5">
-                    <img src={p.logo?.startsWith('http') ? p.logo : `http://localhost:8001${p.logo}`} alt={p.title} className="w-full h-full object-cover transition-all duration-300" onError={(e) => { e.currentTarget.src = '/default-project-logo.png'; }} />
-                    {p.project_type !== 'غير محدد' && (
-                      <div className="absolute top-3 right-3">
-                        <span className={`${badge.bg} ${badge.color} px-3 py-1 rounded-full text-xs font-bold shadow-lg`}>
-                          {badge.label}
-                        </span>
-                      </div>
-                    )}
+            {projects.map(p => (
+              <div key={p.project_id} className="bg-white rounded-xl shadow-md flex flex-col">
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={p.logo?.startsWith('http') ? p.logo : `http://localhost:8001${p.logo}`}
+                    alt={p.title}
+                    className="w-full h-full object-cover"
+                    onError={e => { e.currentTarget.src = '/default-project-logo.png'; }}
+                  />
+                </div>
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="font-bold text-lg">{p.title}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{p.description || 'لا يوجد ملخص'}</p>
+                  <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                    <div><FiMapPin className="inline mr-1" />{p.university_name}</div>
+                    <div><FiBookOpen className="inline mr-1" />{p.college_name}</div>
+                    <div><FiCalendar className="inline mr-1" />{p.start_date ? new Date(p.start_date).getFullYear() : '-'}</div>
+                    <div><FiUser className="inline mr-1" />{p.supervisor_name}</div>
                   </div>
-
-                  <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="font-bold text-xl text-[#31257D] mb-3 line-clamp-2 text-right leading-tight">{p.title}</h3>
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2 border-r-2 border-[#4937BF] pr-3">{p.description || 'لا يوجد ملخص متاح'}</p>
-
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="bg-[#F8FAFC] p-2 rounded-lg">
-                        <div className="flex items-center gap-1 text-[#4937BF] mb-1">
-                          <FiMapPin size={14} />
-                          <span className="text-xs">الجامعة</span>
-                        </div>
-                        <p className="font-medium text-[#31257D] text-sm line-clamp-1">{p.university_name}</p>
-                      </div>
-                      <div className="bg-[#F8FAFC] p-2 rounded-lg">
-                        <div className="flex items-center gap-1 text-[#4937BF] mb-1">
-                          <FiBookOpen size={14} />
-                          <span className="text-xs">الكلية</span>
-                        </div>
-                        <p className="font-medium text-[#31257D] text-sm line-clamp-1">{p.college_name}</p>
-                      </div>
-                      <div className="bg-[#F8FAFC] p-2 rounded-lg">
-                        <div className="flex items-center gap-1 text-[#4937BF] mb-1">
-                          <FiCalendar size={14} />
-                          <span className="text-xs">السنة</span>
-                        </div>
-                        <p className="font-medium text-[#31257D] text-sm">{extractYear(p.start_date)}</p>
-                      </div>
-                      <div className="bg-[#F8FAFC] p-2 rounded-lg">
-                        <div className="flex items-center gap-1 text-[#4937BF] mb-1">
-                          <FiUser size={14} />
-                          <span className="text-xs">المشرف</span>
-                        </div>
-                        <p className="font-medium text-[#31257D] text-sm line-clamp-1">{p.supervisor_name}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mt-auto">
-                      <button
-                        onClick={() => handleQuickView(p)}
-                        className="py-2.5 bg-[#31257D] text-white rounded-lg text-sm font-medium hover:bg-[#4937BF] transition-colors flex items-center justify-center gap-1"
-                      >
-                        <FiEye size={16} /> عرض سريع
-                      </button>
-                      <Link to={`/projects/${p.project_id}`} className="py-2.5 bg-white text-[#31257D] border-2 border-[#31257D] rounded-lg text-sm font-medium hover:bg-[#31257D] hover:text-white transition-all duration-300 flex items-center justify-center gap-1 group">
-                        <span>التفاصيل</span>
-                        <FiArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                      </Link>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 mt-auto">
+                    <button onClick={() => handleQuickView(p)} className="py-2 bg-[#31257D] text-white rounded-lg text-sm">عرض سريع</button>
+                    <Link to={`/projects/${p.project_id}`} className="py-2 border border-[#31257D] text-[#31257D] rounded-lg text-sm flex justify-center">التفاصيل</Link>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Quick View Modal */}
-        {selectedProject && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => { setSelectedProject(null); setSelectedProjectStudents([]); }}>
-            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="p-6">
-                <h2 className="font-bold text-xl mb-4">{selectedProject.title}</h2>
-                <p>{selectedProject.description || 'لا يوجد ملخص متاح'}</p>
-              </div>
-            </div>
-          </div>
-        )}
         {selectedProject && (
           <ProjectDetailModal
             project={selectedProject}
             students={selectedProjectStudents}
             loadingStudents={loadingStudents}
-            onClose={() => {
-              setSelectedProject(null);
-              setSelectedProjectStudents([]);
-            }}
+            onClose={() => { setSelectedProject(null); setSelectedProjectStudents([]); }}
           />
         )}
       </div>

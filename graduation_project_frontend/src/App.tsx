@@ -53,17 +53,16 @@ const App: React.FC = () => {
         />
 
         {/* Project Routes */}
-        <Route path="/ProjectSearch" element={<ProjectSearch />} />
         <Route path="/projects/:id" element={<ProjectDetails />} />
-        <Route path="/projectdetail" element={<ProjectDetails />} />
         <Route path="/projectdetail/:id" element={<ProjectDetails />} />
-        <Route path="/ProjectCollegeSearch/:collegeId" element={<ProjectCollegeSearch/>} />
+        <Route path="/projectdetail" element={<ProjectDetails />} />
 
         {/* Project Search Variants */}
+        <Route path="/ProjectSearch" element={<ProjectSearch />} />
         <Route path="/ProjectUniversitySearch" element={<ProjectUniversitySearch />} />
-        <Route path="/ProjectCollegeSearch" element={<ProjectCollegeSearch />} />
-        <Route path="/ProjectDepartmentSearch" element={<ProjectDepartmentSearch />} />
-        <Route path="/ProjectProgramSearch" element={<ProjectProgramSearch />} />
+        <Route path="/ProjectCollegeSearch/:collegeId" element={<ProjectCollegeSearch />} />
+        <Route path="/ProjectDepartmentSearch/:deptId" element={<ProjectDepartmentSearch />} />
+        <Route path="/ProjectProgramSearch/:programId" element={<ProjectProgramSearch />} />
 
         {/* University Details */}
         <Route path="/university/:id" element={<UniversityDetails />} />

@@ -23,12 +23,12 @@ export interface Group {
   supervisors?: any[];
   members_count?: number;
 }
-
 export interface Project {
   project_id?: number;
 
   title: string;
   description: string;
+  project_type?: string;
 
   groups?: Group[];
 
@@ -46,10 +46,18 @@ export interface Project {
   logo?: string | null;
   documentation_path?: string | null;
 
-  college_name?: string | null;
+  // 🔹 IDs (used for filtering & grouping)
+  university_id?: number | null;
+  college_id?: number | null;
+  department_id?: number | null;
+  program_id?: number | null;
+
+  // 🔹 Names (used for display)
   university_name?: string | null;
+  college_name?: string | null;
   department_name?: string | null;
   program_name?: string | null;
+  branch_name?: string | null;
 
   supervisor_name?: string | null;
   co_supervisor_name?: string | null;
@@ -88,12 +96,21 @@ function mapBackendProject(raw: any): Project {
     logo: raw.logo_url ?? null,
     documentation_path: raw.documentation_url ?? null,
 
-    college_name: raw.college_name ?? null,
+    // 🔹 IDs (important for filtering and grouping)
+    university_id: raw.university_id ?? null,
+    college_id: raw.college_id ?? null,
+    department_id: raw.department_id ?? null,
+    program_id: raw.program_id ?? null,
+
+    // 🔹 Display names
     university_name: raw.university_name ?? null,
+    college_name: raw.college_name ?? null,
+    department_name: raw.department_name ?? null,
+    program_name: raw.program_name ?? null,
     branch_name: raw.branch_name ?? null,
 
-    supervisor_name: raw.supervisor_name ?? 'لا يوجد مشرف',
-    co_supervisor_name: raw.co_supervisor_name ?? 'لا يوجد مشرف مساعد',
+    supervisor_name: raw.supervisor_name ?? "لا يوجد مشرف",
+    co_supervisor_name: raw.co_supervisor_name ?? "لا يوجد مشرف مساعد",
 
     groups: groups,
     members: members,
@@ -293,13 +310,12 @@ export const projectService = {
 async getCollegeProjects(collegeId: number) {
   try {
     const response = await api.get('/projects/', {
-      params: { college: collegeId } // must match Django filter param
+      params: { college_id: collegeId }
     });
 
-    // handle paginated vs array
     const data = Array.isArray(response.data)
       ? response.data
-      : response.data?.results || response.data?.data || [];
+      : response.data?.results || [];
 
     return data.map(mapBackendProject);
   } catch (error) {
@@ -307,6 +323,46 @@ async getCollegeProjects(collegeId: number) {
     return [];
   }
 },
+
+async getDepartmentProjects(departmentId: number) {
+  try {
+    const response = await api.get('/projects/', {
+      params: { department_id: departmentId }
+    });
+
+    const data = Array.isArray(response.data)
+      ? response.data
+      : response.data?.results || [];
+
+    return data.map(mapBackendProject);
+  } catch (error) {
+    console.error('getDepartmentProjects failed', error);
+    return [];
+  }
+},
+
+async getProgramProjects(programId: number) {
+  try {
+    const response = await api.get('/projects/', {
+      params: { program_id: programId }
+    });
+
+    const data = Array.isArray(response.data)
+      ? response.data
+      : response.data?.results || [];
+
+    return data.map(mapBackendProject);
+  } catch (error) {
+    console.error('getProgramProjects failed', error);
+    return [];
+  }
+},
+
+
+
+
+
+
 
   async getProjectsWithGroups(fields?: string[]) {
     const req = [

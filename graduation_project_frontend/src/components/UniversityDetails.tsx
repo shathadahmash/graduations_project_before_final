@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api, { API_ENDPOINTS } from "../services/api.ts";
-import { projectService } from "../services/projectService.ts";
 import ProjectSearch from "./ProjectUniversitySearch.tsx";
 
 interface Program {
@@ -162,29 +161,23 @@ const UniversityDetails: React.FC = () => {
         </div>
       </header>
 
+      {/* University Info */}
       <div className="max-w-7xl mx-auto px-6 py-14 flex flex-col md:flex-row gap-10 items-center">
-        {/* University Logo */}
         <div className="flex-shrink-0 w-96 md:w-[450px] h-80 md:h-96 overflow-hidden bg-gray-100 rounded-lg shadow-lg flex items-center justify-center">
           <img
             src={university.logo || "/default-uni-logo.png"}
             alt={university.name}
             className="w-full h-full object-contain"
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (target.src !== window.location.origin + "/default-uni-logo.png") {
-                target.src = "/default-uni-logo.png";
-              }
-            }}
+            onError={(e) => { const target = e.currentTarget; target.src = "/default-uni-logo.png"; }}
           />
         </div>
-
-        {/* University Info */}
         <div className="flex-1 space-y-4">
           <h1 className="text-5xl font-bold text-[#31257D]">{university.name}</h1>
           <p className="text-lg text-gray-600">{university.type} • {university.location}</p>
           <p className="bg-white shadow-sm rounded-xl p-6 text-gray-600">{university.description}</p>
         </div>
       </div>
+
       {/* Colleges */}
       <section className="max-w-7xl mx-auto px-6 pb-20">
         <h2 className="text-3xl font-bold text-[#31257D] text-center mb-12">الكليات</h2>
@@ -199,12 +192,7 @@ const UniversityDetails: React.FC = () => {
                       src={college.logo || "/default-college-logo.png"}
                       alt={college.name}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (target.src !== window.location.origin + "/default-college-logo.png") {
-                          target.src = "/default-college-logo.png";
-                        }
-                      }}
+                      onError={(e) => { const target = e.currentTarget; target.src = "/default-college-logo.png"; }}
                     />
                   </div>
                   <h3 className="text-xl font-bold text-[#31257D] group-hover:text-white transition-colors mb-3">{college.name}</h3>
@@ -233,11 +221,15 @@ const UniversityDetails: React.FC = () => {
           ))}
         </div>
 
+        {/* Departments and Programs */}
         {university.colleges.map((college) =>
           college.open ? (
             <div key={`depts-${college.id}`} className="mt-6 flex flex-wrap justify-center gap-6 animate-fadeIn">
               {college.departments.map((dept) => (
-                <div key={dept.id} className="group relative bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 p-6 text-center overflow-hidden flex-1 min-w-[250px] max-w-[300px]">
+                <div
+                  key={dept.id}
+                  className="group relative bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 p-6 text-center overflow-hidden flex-1 min-w-[250px] max-w-[300px]"
+                >
                   <div className="absolute inset-0 bg-gradient-to-br from-[#31257D] to-[#4937BF] opacity-0 group-hover:opacity-30 transition-all duration-500"></div>
                   <div className="relative z-10">
                     <h4 className="text-lg font-bold text-[#31257D] group-hover:text-white mb-3">{dept.name}</h4>
@@ -249,16 +241,31 @@ const UniversityDetails: React.FC = () => {
                         عرض التخصصات
                       </button>
                       <Link
-                        to={`/departments/${dept.id}/projects`}
+                        to={`/ProjectDepartmentSearch/${dept.id}`}
+                        state={{ dept }}
                         className="text-center bg-[#31257D] text-white py-2 rounded-lg text-sm font-medium transition-all duration-300 group-hover:bg-white group-hover:text-[#31257D]"
                       >
                         عرض المشاريع
                       </Link>
                     </div>
+
+                    {/* Programs as Cards */}
                     {dept.open && dept.programs.length > 0 && (
-                      <div className="flex flex-wrap gap-2 justify-center mt-3">
+                      <div className="mt-4 flex flex-wrap justify-center gap-6 animate-fadeIn">
                         {dept.programs.map((prog) => (
-                          <div key={prog.id} className="bg-white px-3 py-2 rounded-lg shadow-sm text-[#31257D] text-sm">{prog.name}</div>
+                          <div
+                            key={prog.id}
+                            className="group relative bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 p-4 text-center min-w-[200px] max-w-[250px]"
+                          >
+                            <h5 className="font-bold text-[#31257D] mb-3">{prog.name}</h5>
+                            <Link
+                              to={`/ProjectProgramSearch/${prog.id}`}
+                              state={{ program: prog }}
+                              className="block bg-[#31257D] text-white py-2 rounded-lg text-sm font-medium transition-all duration-300 group-hover:bg-white group-hover:text-[#31257D]"
+                            >
+                              عرض المشاريع
+                            </Link>
+                          </div>
                         ))}
                       </div>
                     )}

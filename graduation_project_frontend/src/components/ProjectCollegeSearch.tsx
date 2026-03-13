@@ -45,7 +45,6 @@ const ProjectSearch: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
-    college__cid: collegeId.toString(),
     department: '',
     year: '',
     field: '',
@@ -109,7 +108,7 @@ const ProjectSearch: React.FC = () => {
   }, [collegeId]);
 
   const fetchProjects = useCallback(async () => {
-    if (!filters.college__cid) {
+    if (!collegeId) {
       setProjects([]);
       return;
     }
@@ -119,7 +118,7 @@ const ProjectSearch: React.FC = () => {
 
       const params: any = {
         limit: 50,
-        'college__cid': Number(filters.college__cid)
+        college_id: Number(collegeId) // match DRF backend filter
       };
 
       if (searchQuery.trim()) params.search = searchQuery.trim();
@@ -139,7 +138,7 @@ const ProjectSearch: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, searchQuery]);
+  }, [collegeId, filters, searchQuery]);
 
   const handleQuickView = (project: Project) => {
     setSelectedProject(project);
