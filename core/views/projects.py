@@ -28,6 +28,10 @@ class ProjectFilter(django_filters.FilterSet):
         field_name="university__uid"
     )
 
+    college = django_filters.NumberFilter(
+    field_name="groups__program_groups__program__department__college__cid"
+)
+    
     project_college= django_filters.NumberFilter(
         field_name="college__cid"
     )
@@ -423,6 +427,22 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+@action(detail=False, methods=['get'], url_path='college/(?P<college_id>\d+)')
+def college_projects(self, request, college_id=None):
+        """
+        Returns projects belonging to a specific college.
+        """
+        qs = Project.objects.filter(
+            groups__program_groups__program__department__college__cid=college_id
+        ).distinct()
+        
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

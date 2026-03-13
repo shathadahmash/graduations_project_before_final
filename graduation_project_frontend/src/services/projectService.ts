@@ -290,14 +290,20 @@ export const projectService = {
   }
 },
 
- async getCollegeProjects(collegeid: number) {
+async getCollegeProjects(collegeId: number) {
   try {
     const response = await api.get('/projects/', {
-      params: { college: collegeid }  // <-- filter by university
+      params: { college: collegeId } // must match Django filter param
     });
-    return (response.data as any[]).map(mapBackendProject);
+
+    // handle paginated vs array
+    const data = Array.isArray(response.data)
+      ? response.data
+      : response.data?.results || response.data?.data || [];
+
+    return data.map(mapBackendProject);
   } catch (error) {
-    console.error('[projectService] getcollegeProjects failed', error);
+    console.error('getCollegeProjects failed', error);
     return [];
   }
 },

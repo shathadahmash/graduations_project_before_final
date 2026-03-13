@@ -4,7 +4,7 @@ import Navbar from './Navbar';
 import { projectService } from '../services/projectService';
 import { userService } from '../services/userService';
 import ProjectDetailModal from './ProjectDetailModal';
-import { data, Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 interface Project {
   project_id: number;
@@ -38,14 +38,14 @@ interface FilterOptions {
   project_types: { value: string; label: string }[];
 }
 
-const ProjectSearch: React.FC = () => { 
+const ProjectSearch: React.FC = () => {
   const { collegeId } = useParams<{ collegeId: string }>();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
-    college: collegeId.toString(),
+    college__cid: collegeId.toString(),
     department: '',
     year: '',
     field: '',
@@ -87,14 +87,13 @@ const ProjectSearch: React.FC = () => {
 
   const fetchFilterOptions = useCallback(async () => {
     try {
-
       const options = await projectService.getFilterOptions();
       const departments = await userService.getDepartments();
 
       setFilterOptions(prev => ({
         ...prev,
         departments: removeDuplicatesById(
-          (departments || []).filter((d: any) => d.college_id === collegeId)
+          (departments || []).filter((d: any) => d.college_id === Number(collegeId))
         ),
         supervisors: removeDuplicatesById(options.supervisors || []),
         co_supervisors: removeDuplicatesById(options.co_supervisors || []),
@@ -104,26 +103,23 @@ const ProjectSearch: React.FC = () => {
         fields: Array.from(new Set(options.fields || [])),
         tools: Array.from(new Set(options.tools || []))
       }));
-
     } catch (err) {
       console.error('خطأ في جلب خيارات الفلاتر', err);
     }
   }, [collegeId]);
 
   const fetchProjects = useCallback(async () => {
-
-    if (!filters.college) {
+    if (!filters.college__cid) {
       setProjects([]);
       return;
     }
 
     try {
-
       setLoading(true);
 
       const params: any = {
         limit: 50,
-        college: Number(filters.college)
+        'college__cid': Number(filters.college__cid)
       };
 
       if (searchQuery.trim()) params.search = searchQuery.trim();
@@ -135,47 +131,14 @@ const ProjectSearch: React.FC = () => {
       if (filters.co_supervisor) params.co_supervisor = filters.co_supervisor;
       if (filters.project_type) params.project_type = filters.project_type;
 
-      const response = await projectService.getCollegeProjects(params);
-      console.log('---------------------------Raw API Response-------------:', response);
-      const data = Array.isArray(response)
-        ? response
-        : response?.results || response?.data || [];
-
-      setProjects(
-        data.map((p: any) => ({
-          project_id: p.project_id,
-          title: p.title,
-          description: p.description,
-          project_type: p.project_type,
-          state: p.state_name || p.state?.name || '',
-          field: p.field,
-          tools: p.tools,
-          university_name: p.university_name || p.university?.name || '',
-          branch_name: p.branch_name || p.branch?.name || '',
-          college_name: p.college_name || p.college?.name || 'لا توجد كلية',
-          department_name: p.department?.name,
-          start_date: p.start_date,
-          end_date: p.end_date,
-          external_company: p.external_company?.name,
-          supervisor_name: p.supervisor_name || 'لا يوجد مشرف',
-          co_supervisor_name: p.co_supervisor_name || 'لا يوجد مشرف مساعد',
-          logo: p.logo || '/default-project-logo.png',
-          documentation: p.documentation_url || null,
-          students: p.students || []
-        }))
-      );
-
+      const response = await projectService.getProjects(params);
+      setProjects(response);
     } catch (err) {
-
       console.error('خطأ في جلب المشاريع', err);
       setProjects([]);
-
     } finally {
-
       setLoading(false);
-
     }
-
   }, [filters, searchQuery]);
 
   const handleQuickView = (project: Project) => {
@@ -196,8 +159,7 @@ const ProjectSearch: React.FC = () => {
     }
   };
 
-  const extractYear = (date: number) =>
-    date ? new Date(date).getFullYear() : 'غير محدد';
+  const extractYear = (date: number) => date ? new Date(date).getFullYear() : 'غير محدد';
 
   useEffect(() => {
     fetchFilterOptions();
@@ -208,33 +170,18 @@ const ProjectSearch: React.FC = () => {
   }, [fetchProjects]);
 
   useEffect(() => {
-
-    if (searchTimeoutRef.current)
-      clearTimeout(searchTimeoutRef.current);
-
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(fetchProjects, 500);
-
-    return () => {
-      if (searchTimeoutRef.current)
-        clearTimeout(searchTimeoutRef.current);
-    };
-
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [searchQuery, filters, fetchProjects]);
 
   return (
-
     <div className="min-h-screen bg-[#F8FAFC]" dir="rtl">
-
       <Navbar />
-
       <div className="max-w-7xl mx-auto px-6 py-10">
-
-        <h1 className="text-3xl font-bold text-[#31257D] mb-6">
-          مشاريع الكلية
-        </h1>
+        <h1 className="text-3xl font-bold text-[#31257D] mb-6">مشاريع الكلية</h1>
 
         <div className="flex flex-wrap gap-3 mb-6">
-
           <input
             type="text"
             placeholder="ابحث في المشاريع..."
@@ -245,122 +192,60 @@ const ProjectSearch: React.FC = () => {
 
           <select
             value={filters.department}
-            onChange={e =>
-              setFilters(f => ({ ...f, department: e.target.value }))
-            }
+            onChange={e => setFilters(f => ({ ...f, department: e.target.value }))}
           >
             <option value="">القسم</option>
             {filterOptions.departments.map(dep => (
-              <option key={dep.id} value={dep.id}>
-                {dep.name}
-              </option>
+              <option key={dep.id} value={dep.id}>{dep.name}</option>
             ))}
           </select>
-
         </div>
 
         {loading ? (
-
           <div className="text-center py-20">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#31257D]"></div>
-            <p className="mt-4 text-[#4A5568]">
-              جاري تحميل المشاريع...
-            </p>
+            <p className="mt-4 text-[#4A5568]">جاري تحميل المشاريع...</p>
           </div>
-
         ) : projects.length === 0 ? (
-
           <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
             <FiSearch size={40} className="mx-auto text-[#31257D]" />
-            <p className="mt-4 text-[#4A5568]">
-              لا توجد مشاريع مطابقة
-            </p>
+            <p className="mt-4 text-[#4A5568]">لا توجد مشاريع مطابقة</p>
           </div>
-
         ) : (
-
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-
             {projects.map(p => {
-
               const badge = getProjectTypeBadge(p.project_type);
-
               return (
-
-                <div
-                  key={p.project_id}
-                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all border border-[#31257D]/10 flex flex-col"
-                >
-
+                <div key={p.project_id} className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all border border-[#31257D]/10 flex flex-col">
                   <div className="relative h-48 overflow-hidden">
-
                     <img
-                      src={
-                        p.logo?.startsWith('http')
-                          ? p.logo
-                          : `http://localhost:8001${p.logo}`
-                      }
+                      src={p.logo?.startsWith('http') ? p.logo : `http://localhost:8001${p.logo}`}
                       alt={p.title}
                       className="w-full h-full object-cover"
-                      onError={e => {
-                        e.currentTarget.src =
-                          '/default-project-logo.png';
-                      }}
+                      onError={e => { e.currentTarget.src = '/default-project-logo.png'; }}
                     />
-
                     <div className="absolute top-3 right-3">
-                      <span
-                        className={`${badge.bg} ${badge.color} px-3 py-1 rounded-full text-xs font-bold`}
-                      >
+                      <span className={`${badge.bg} ${badge.color} px-3 py-1 rounded-full text-xs font-bold`}>
                         {badge.label}
                       </span>
                     </div>
-
                   </div>
 
                   <div className="p-5 flex-1 flex flex-col">
-
-                    <h3 className="font-bold text-lg text-[#31257D] mb-2">
-                      {p.title}
-                    </h3>
-
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                      {p.description || 'لا يوجد ملخص'}
-                    </p>
+                    <h3 className="font-bold text-lg text-[#31257D] mb-2">{p.title}</h3>
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{p.description || 'لا يوجد ملخص'}</p>
 
                     <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-
-                      <div>
-                        <FiMapPin className="inline mr-1" />
-                        {p.university_name}
-                      </div>
-
-                      <div>
-                        <FiBookOpen className="inline mr-1" />
-                        {p.college_name}
-                      </div>
-
-                      <div>
-                        <FiCalendar className="inline mr-1" />
-                        {extractYear(p.start_date)}
-                      </div>
-
-                      <div>
-                        <FiUser className="inline mr-1" />
-                        {p.supervisor_name}
-                      </div>
-
+                      <div><FiMapPin className="inline mr-1" />{p.university_name}</div>
+                      <div><FiBookOpen className="inline mr-1" />{p.college_name}</div>
+                      <div><FiCalendar className="inline mr-1" />{extractYear(p.start_date)}</div>
+                      <div><FiUser className="inline mr-1" />{p.supervisor_name}</div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 mt-auto">
-
-                      <button
-                        onClick={() => handleQuickView(p)}
-                        className="py-2 bg-[#31257D] text-white rounded-lg text-sm flex items-center justify-center gap-1"
-                      >
+                      <button onClick={() => handleQuickView(p)} className="py-2 bg-[#31257D] text-white rounded-lg text-sm flex items-center justify-center gap-1">
                         <FiEye size={16} /> عرض سريع
                       </button>
-
                       <Link
                         to={`/projects/${p.project_id}`}
                         className="py-2 border-2 border-[#31257D] text-[#31257D] rounded-lg text-sm flex items-center justify-center gap-1 hover:bg-[#31257D] hover:text-white"
@@ -368,23 +253,15 @@ const ProjectSearch: React.FC = () => {
                         التفاصيل
                         <FiArrowLeft size={16} />
                       </Link>
-
                     </div>
-
                   </div>
-
                 </div>
-
               );
-
             })}
-
           </div>
-
         )}
 
         {selectedProject && (
-
           <ProjectDetailModal
             project={selectedProject}
             students={selectedProjectStudents}
@@ -394,11 +271,8 @@ const ProjectSearch: React.FC = () => {
               setSelectedProjectStudents([]);
             }}
           />
-
         )}
-
       </div>
-
     </div>
   );
 };
