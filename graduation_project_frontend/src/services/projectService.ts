@@ -306,6 +306,18 @@ export const projectService = {
   }
 },
 
+ async getCollegeProjects(collegeid: number) {
+  try {
+    const response = await api.get('/projects/', {
+      params: { college: collegeid }  // <-- filter by university
+    });
+    return (response.data as any[]).map(mapBackendProject);
+  } catch (error) {
+    console.error('[projectService] getcollegeProjects failed', error);
+    return [];
+  }
+},
+
   async getProjectsWithGroups(fields?: string[]) {
     const req = [
       {

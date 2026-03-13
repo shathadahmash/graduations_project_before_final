@@ -28,6 +28,10 @@ class ProjectFilter(django_filters.FilterSet):
         field_name="university__uid"
     )
 
+    project_college= django_filters.NumberFilter(
+        field_name="college__cid"
+    )
+
     university = django_filters.NumberFilter(
         field_name= "groups__program_groups__program__department__college__branch__university__uid"
     )
