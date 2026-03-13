@@ -36,16 +36,16 @@ const ProjectDetails: React.FC = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
+  // const [imageError, setImageError] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8001';
 
   // دالة لجلب رابط الصورة
   const getImageUrl = (imagePath?: string): string => {
-    if (!imagePath || imageError) return '/default-project-logo.png';
-    if (imagePath.startsWith('http')) return imagePath;
-    return `${API_BASE_URL}/media/${imagePath.replace(/^\/+/, '')}`;
-  };
+  if (!imagePath) return '/default-project-logo.png';
+  if (imagePath.startsWith('http')) return imagePath;
+  return `${API_BASE_URL}/media/${imagePath.replace(/^\/+/, '')}`;
+};
 
   // دالة لاستخراج السنة
   const extractYear = (date: number | string): string => {
@@ -236,15 +236,24 @@ const ProjectDetails: React.FC = () => {
             <div className="flex flex-col md:flex-row gap-8">
               {/* صورة المشروع */}
               <div className="md:w-64 flex-shrink-0">
-                <div className="bg-[#F8FAFC] rounded-xl overflow-hidden border-2 border-gray-100">
+              <div className="bg-[#F8FAFC] rounded-xl overflow-hidden border-2 border-gray-100 flex items-center justify-center">
+                
+                {project.logo ? (
                   <img
                     src={getImageUrl(project.logo)}
                     alt={project.title}
                     className="w-full h-64 md:h-48 object-cover"
-                    onError={() => setImageError(true)}
                   />
-                </div>
+                ) : (
+                  <img
+                    src="/default-project-logo.png"
+                    alt="default"
+                    className="w-full h-64 md:h-48 object-cover"
+                  />
+                )}
+
               </div>
+            </div>
 
               {/* معلومات المشروع الأساسية */}
               <div className="flex-1">

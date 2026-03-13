@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { data, Link, useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom"; // add this at the top
+import { Link, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api, { API_ENDPOINTS } from "../services/api.ts";
-import { projectService } from "../services/projectService.ts"; // <-- import your project service
-import ProjectSearch from "./ProjectUniversitySearch.tsx"; // adjust path as needed
+import { projectService } from "../services/projectService.ts";
+import ProjectSearch from "./ProjectUniversitySearch.tsx";
+
 interface Program {
   id: number;
   name: string;
@@ -42,10 +43,9 @@ interface Project {
 
 const UniversityDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [university, setUniversity] = useState<University | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // University projects state
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
 
@@ -57,7 +57,7 @@ const UniversityDetails: React.FC = () => {
           `${API_ENDPOINTS.related_to_university}${id}/related/`
         );
         const data = response.data;
-        console.log("--------------------------------------------University Data:", data); // Debug log
+        console.log("--------------------------------------------University Data:", data);
 
         if (!data || !data.university) {
           setUniversity(null);
@@ -126,8 +126,6 @@ const UniversityDetails: React.FC = () => {
     fetchProjects();
   }, [id]);
 
-  // ... rest of your component (header, colleges, etc.)
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -148,13 +146,13 @@ const UniversityDetails: React.FC = () => {
     setUniversity((prev) =>
       prev
         ? {
-          ...prev,
-          colleges: prev.colleges.map((c) => ({
-            ...c,
-            open: c.id === collegeId ? !c.open : false,
-            departments: c.departments.map((d) => ({ ...d, open: false })),
-          })),
-        }
+            ...prev,
+            colleges: prev.colleges.map((c) => ({
+              ...c,
+              open: c.id === collegeId ? !c.open : false,
+              departments: c.departments.map((d) => ({ ...d, open: false })),
+            })),
+          }
         : prev
     );
   };
@@ -163,27 +161,26 @@ const UniversityDetails: React.FC = () => {
     setUniversity((prev) =>
       prev
         ? {
-          ...prev,
-          colleges: prev.colleges.map((c) =>
-            c.id === collegeId
-              ? {
-                ...c,
-                departments: c.departments.map((d) =>
-                  d.id === deptId
-                    ? { ...d, open: !d.open }
-                    : { ...d, open: false }
-                ),
-              }
-              : c
-          ),
-        }
+            ...prev,
+            colleges: prev.colleges.map((c) =>
+              c.id === collegeId
+                ? {
+                    ...c,
+                    departments: c.departments.map((d) =>
+                      d.id === deptId
+                        ? { ...d, open: !d.open }
+                        : { ...d, open: false }
+                    ),
+                  }
+                : c
+            ),
+          }
         : prev
     );
   };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#31257D] text-white shadow-lg">
         <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-4">
@@ -204,15 +201,20 @@ const UniversityDetails: React.FC = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-14 flex flex-col md:flex-row gap-10 items-center">
-
-        <img
-          src={university.logo}
+        {/* صورة الجامعة - تم إضافة خلفية ثابتة لمنع الاهتزاز */}
+        <div className="w-64 h-80 md:w-80 md:h-96 overflow-hidden bg-gray-100 rounded-lg shadow-lg flex items-center justify-center">
+          <img
+          src={university.logo || "/default-uni-logo.png"}
           alt={university.name}
-          className="w-64 h-80 md:w-80 md:h-96 object-cover shadow-lg transition-all duration-300"
+          className="w-full h-full object-cover"
           onError={(e) => {
-            e.currentTarget.src = '/default-uni-logo.png';
+            const target = e.currentTarget;
+            if (target.src !== window.location.origin + "/default-uni-logo.png") {
+              target.src = "/default-uni-logo.png";
+            }
           }}
         />
+        </div>
 
         <div className="space-y-4">
           <h1 className="text-5xl font-bold text-[#31257D]">
@@ -237,22 +239,25 @@ const UniversityDetails: React.FC = () => {
         <div className="flex flex-wrap justify-center gap-8">
           {university.colleges.map((college) => (
             <div key={college.id} className="w-80">
-
               {/* College Card */}
               <div className="group bg-white rounded-lg shadow-sm hover:shadow-xl transition-all duration-300 p-6 text-center relative overflow-hidden">
-
                 {/* Hover gradient */}
                 <div className="absolute inset-0 bg-gradient-to-br from-[#31257D] to-[#4937BF] opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
 
                 <div className="relative z-10">
-                  {/* Logo */}
-                  <div className="relative mb-4 w-full h-56 md:h-64 mx-auto">
+                  {/* Logo - تم إضافة حاوية ثابتة لمنع الاهتزاز */}
+                  <div className="relative mb-4 w-full h-56 md:h-64 mx-auto overflow-hidden bg-gray-100 rounded-lg">
                     <img
-                      src={college.logo}
-                      alt={college.name}
-                      className="w-full h-full object-cover shadow-lg transition-all duration-300"
-                      onError={(e) => { e.currentTarget.src = '/default-college-logo.png'; }}
-                    />
+                    src={college.logo || "/default-college-logo.png"}
+                    alt={college.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src !== window.location.origin + "/default-college-logo.png") {
+                        target.src = "/default-college-logo.png";
+                      }
+                    }}
+                  />
                   </div>
 
                   {/* Name */}
@@ -287,13 +292,11 @@ const UniversityDetails: React.FC = () => {
 
                 <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-white to-[#4937BF] transition-all duration-300 w-0 group-hover:w-full"></div>
               </div>
-
-              {/* Departments: move outside the college card wrapper */}
             </div>
           ))}
         </div>
 
-        {/* All department cards container (full width, outside college card) */}
+        {/* All department cards container */}
         {university.colleges.map((college) =>
           college.open ? (
             <div
@@ -352,24 +355,36 @@ const UniversityDetails: React.FC = () => {
           ) : null
         )}
       </section>
-      {/* University Projects */}
-      {/* University Projects Section */}
-      {/* University Projects */}
-      {/* University Projects Section */}
+
       <section className="max-w-7xl mx-auto px-6 pb-20">
         <ProjectSearch
           universityId={university?.id}
           colleges={university?.colleges || []}
         />
       </section>
+
       <style>
         {`
         @keyframes fadeIn {
-          from {opacity:0; transform:translateY(10px);}
-          to {opacity:1; transform:translateY(0);}
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn{
-          animation:fadeIn .4s ease forwards;
+        .animate-fadeIn {
+          animation: fadeIn 0.4s ease forwards;
+        }
+        
+        /* منع اهتزاز الصور */
+        img {
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          transform: translateZ(0);
+          -webkit-transform: translateZ(0);
+        }
+        
+        /* خلفية ثابتة للصور أثناء التحميل */
+        .overflow-hidden {
+          background-color: #f3f4f6;
+          min-height: inherit;
         }
         `}
       </style>
