@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FiCalendar, FiMapPin, FiBookOpen, FiUser, FiUsers, FiEye, FiX, FiSearch, FiArrowLeft } from 'react-icons/fi';
+import { FiCalendar, FiMapPin, FiBookOpen, FiUser, FiSearch, FiEye, FiArrowLeft } from 'react-icons/fi';
 import Navbar from './Navbar';
-import { projectService } from '../services/projectService';
+import { Group, projectService } from '../services/projectService';
 import { userService } from '../services/userService';
 import ProjectDetailModal from './ProjectDetailModal';
 
@@ -11,21 +11,22 @@ interface Project {
   title: string;
   description: string;
   project_type: string;
-  state: string;
+  state_name: string;
   field: string;
   tools: string;
   university_name: string;
-  branch_name: string;
-  college_name: string;
+  college_name?: string;
   department_name?: string;
-  start_date: number;
-  end_date: number;
+  program_name?: string;
+  branch_name?: string;
+  start_date?: number;
+  end_date?: number;
   external_company?: string;
   supervisor_name: string;
   co_supervisor_name?: string;
   logo?: string;
   documentation?: string;
-  students?: { name: string; id?: string }[];
+  groups?: Group[];
 }
 
 interface FilterOptions {
@@ -76,11 +77,9 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
     ]
   });
 
-  // Quick view states
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedProjectStudents, setSelectedProjectStudents] = useState<{ name: string; id?: string }[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
 
   const removeDuplicatesById = <T extends { id: number }>(items: T[]): T[] => {
@@ -93,14 +92,12 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
     try {
       const options = await projectService.getFilterOptions();
       const departments = await userService.getDepartments();
-
       setFilterOptions(prev => ({
         ...prev,
         departments: removeDuplicatesById(departments || []),
         supervisors: removeDuplicatesById(options.supervisors || []),
         co_supervisors: removeDuplicatesById(options.co_supervisors || []),
-        years: Array.from(new Set((options.years || []).map((y: string) => y.toString().substring(0, 4))))
-          .sort((a, b) => parseInt(b) - parseInt(a)),
+        years: Array.from(new Set((options.years || []).map((y: string) => y.toString().substring(0, 4)))).sort((a, b) => parseInt(b) - parseInt(a)),
         fields: Array.from(new Set(options.fields || [])),
         tools: Array.from(new Set(options.tools || []))
       }));
@@ -114,7 +111,6 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
       setProjects([]);
       return;
     }
-
     try {
       setLoading(true);
       const params: any = { limit: 50, project_university: Number(filters.project_university) };
@@ -130,18 +126,20 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
 
       const response = await projectService.getProjects(params);
       const data = Array.isArray(response) ? response : response?.results || response?.data || [];
+
       setProjects(data.map((p: any) => ({
         project_id: p.project_id,
         title: p.title,
         description: p.description,
         project_type: p.project_type,
-        state: p.state_name || p.state?.name || '',
+        state_name: p.state_name || p.state?.name || '',
         field: p.field,
         tools: p.tools,
         university_name: p.university_name || p.university?.name || '',
         branch_name: p.branch_name || p.branch?.name || '',
         college_name: p.college_name || p.college?.name || 'لا توجد كلية',
         department_name: p.department?.name,
+        program_name: p.program?.p_name || p.program_name,
         start_date: p.start_date,
         end_date: p.end_date,
         external_company: p.external_company?.name,
@@ -149,7 +147,7 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
         co_supervisor_name: p.co_supervisor_name || 'لا يوجد مشرف مساعد',
         logo: p.logo || '/default-project-logo.png',
         documentation: p.documentation_url || null,
-        students: p.students || []
+        groups: p.groups || []
       })));
     } catch (err) {
       console.error('خطأ في جلب المشاريع', err);
@@ -159,13 +157,17 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
     }
   }, [filters, searchQuery]);
 
-  // Quick View handler
   const handleQuickView = (project: Project) => {
     setSelectedProject(project);
-    setSelectedProjectStudents(project.students || []);
+    const students =
+      project.groups?.flatMap(g =>
+        g.members?.map(m => ({
+          name: m.user_detail?.name || `${m.user_detail?.first_name || ''} ${m.user_detail?.last_name || ''}`.trim()
+        })) || []
+      ) || [];
+    setSelectedProjectStudents(students);
   };
 
-  // Placeholder helper functions
   const getProjectTypeBadge = (type: string) => {
     switch (type) {
       case 'Proposed': return { label: 'مقترح', bg: 'bg-purple-100', color: 'text-purple-700' };
@@ -174,6 +176,7 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
       default: return { label: 'غير محدد', bg: 'bg-gray-100', color: 'text-gray-700' };
     }
   };
+
   const extractYear = (date: number) => date ? new Date(date).getFullYear() : 'غير محدد';
   const getActiveFiltersCount = () => Object.values(filters).filter(v => v).length;
   const clearAllFilters = () => setFilters({ ...filters, college: '', department: '', year: '', field: '', tools: '', supervisor: '', co_supervisor: '', project_type: '' });
@@ -320,7 +323,6 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
             }}
           />
         )}
-
       </div>
     </div>
   );

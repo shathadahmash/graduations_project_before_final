@@ -8,12 +8,31 @@ export interface Supervisor {
   name: string;
 }
 
+export interface GroupMember {
+  user: number;
+  user_detail?: {
+    id?: number;
+    name?: string;
+    username?: string;
+  };
+}
+
+export interface Group {
+  group_id: number;
+  members: GroupMember[];
+  supervisors?: any[];
+  members_count?: number;
+}
+
 export interface Project {
-  members?: { id: number; name?: string; CID?: string | null }[];
   project_id?: number;
 
   title: string;
   description: string;
+
+  groups?: Group[];
+
+  members?: { id: number; name?: string }[];
 
   state?: number;
   state_name?: string;
@@ -32,73 +51,40 @@ export interface Project {
   department_name?: string | null;
   program_name?: string | null;
 
-  college_id?: number | null;
-  university_id?: number | null;
-  department_id?: number | null;
-  program_id?: number | null;
-  
   supervisor_name?: string | null;
   co_supervisor_name?: string | null;
 
-  created_by?: {
-    id: number;
-    username?: string;
-
-    first_name?: string;
-    last_name?: string;
-    name?: string;
-
-    email?: string | null;
-    phone?: string | null;
-    gender?: string | null;
-    CID?: string | null;
-
-    roles?: {
-      role__role_ID?: number;
-      role__type?: string;
-    }[];
-
-    staff_profiles?: {
-      staff_id?: number;
-
-      role?: string;
-      Qualification?: string;
-      Office_Hours?: string;
-
-      user?: {
-        id?: number;
-        name?: string;
-      };
-    }[];
-  } | null;
+  created_by?: any;
 }
 
 function mapBackendProject(raw: any): Project {
   const creator = raw.created_by || null;
 
-  const role =
-    creator?.roles?.length > 0
-      ? creator.roles[0]?.role__type
-      : null;
+  const groups = raw.groups || [];
 
-  const qualification =
-    creator?.staff_profiles?.length > 0
-      ? creator.staff_profiles[0]?.Qualification
-      : null;
+  const members =
+    groups.flatMap((g: any) =>
+      (g.members || []).map((m: any) => ({
+        id: m.user,
+        name: m.user_detail?.name || m.user_detail?.username,
+      }))
+    ) || [];
 
   return {
     project_id: raw.project_id,
     title: raw.title,
     description: raw.description,
     project_type: raw.project_type,
+
     state: raw.state,
     state_name: raw.state_name,
+
     start_date: raw.start_date ?? undefined,
     end_date: raw.end_date ?? undefined,
+
     field: raw.field ?? null,
     tools: raw.tools ?? null,
 
-    // 🔹 Use the correct backend keys
     logo: raw.logo_url ?? null,
     documentation_path: raw.documentation_url ?? null,
 
@@ -109,8 +95,8 @@ function mapBackendProject(raw: any): Project {
     supervisor_name: raw.supervisor_name ?? 'لا يوجد مشرف',
     co_supervisor_name: raw.co_supervisor_name ?? 'لا يوجد مشرف مساعد',
 
-    role: role,
-    qualification: qualification,
+    groups: groups,
+    members: members,
 
     created_by: creator
       ? {
@@ -123,13 +109,10 @@ function mapBackendProject(raw: any): Project {
           phone: creator.phone ?? null,
           gender: creator.gender ?? null,
           CID: creator.CID ?? null,
-          role: role,
-          qualification: qualification,
         }
       : null,
   };
 }
-
 export const projectService = {
   async getProjects(params?: any) {
     try {
@@ -154,16 +137,17 @@ export const projectService = {
       throw error;
     }
   },
-  async getProjectGroups(projectId: number) {
-  try {
-    const response = await api.get(`/groups/?project=${projectId}`);
-    console.log("[projectService] project groups:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error("[projectService] getProjectGroups failed:", error);
-    return [];
-  }
-},
+
+//   async getProjectGroups(projectId: number) {
+//   try {
+//     const response = await api.get(`/groups/?project=${projectId}`);
+//     console.log("[projectService] project groups:", response.data);
+//     return response.data;
+//   } catch (error) {
+//     console.error("[projectService] getProjectGroups failed:", error);
+//     return [];
+//   }
+// },
 
   async getFilterOptions() {
     try {

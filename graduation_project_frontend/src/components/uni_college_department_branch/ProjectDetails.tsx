@@ -4,7 +4,7 @@ import {
   FiCalendar, FiMapPin, FiBookOpen, FiTool, FiUser, FiUsers, 
   FiX, FiInfo, FiFileText, FiBriefcase, FiTag, FiClock, 
   FiImage, FiDownload, FiLink, FiArrowRight, FiHome,
-  FiChevronLeft, FiExternalLink, FiPaperclip
+  FiChevronLeft, FiExternalLink, FiPaperclip, FiLock
 } from 'react-icons/fi';
 import Navbar from '../Navbar';
 import { projectService } from '../../services/projectService';
@@ -27,7 +27,7 @@ interface Project {
   supervisor_name: string;
   co_supervisor_name?: string;
   logo?: string;
-  documentation?: string;
+  documentation_path?: string | null;
   students?: { name: string; id?: string }[];
 }
 
@@ -36,15 +36,15 @@ const ProjectDetails: React.FC = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8001';
 
   // دالة لجلب رابط الصورة
   const getImageUrl = (imagePath?: string): string => {
-    if (!imagePath || imageError) return '/default-project-logo.png';
+    if (!imagePath) return '/default-project-logo.png';
     if (imagePath.startsWith('http')) return imagePath;
-    return `${API_BASE_URL}/media/${imagePath.replace(/^\/+/, '')}`;
+    const cleanPath = imagePath.replace(/^\/+/, '');
+    return `${API_BASE_URL}/media/${cleanPath}`;
   };
 
   // دالة لاستخراج السنة
@@ -83,72 +83,42 @@ const ProjectDetails: React.FC = () => {
     return colors[type] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
   };
 
-  // دالة لعرض محتوى التوثيق (غير قابل للتحميل)
-  const renderDocumentation = (doc?: string) => {
-    if (!doc || doc === 'null' || doc === 'undefined' || doc.trim() === '') {
+  // دالة لعرض محتوى التوثيق - رسالة توضيحية فقط
+  const renderDocumentation = (doc?: string | null) => {
+    if (!doc || doc.trim() === '' || doc === 'null' || doc === 'undefined') {
       return (
         <div className="bg-gray-50 p-8 rounded-xl text-center border-2 border-dashed border-gray-200">
           <FiFileText className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-gray-500 font-medium">لا يوجد ملف توثيق لهذا المشروع</p>
-          <p className="text-gray-400 text-sm mt-1">يمكن للمشرف إضافة ملف التوثيق لاحقاً</p>
+          <p className="text-gray-400 text-sm mt-1">يمكن للمشرف إضافة ملف لاحقاً</p>
         </div>
       );
     }
 
-    // إذا كان رابط
-    if (doc.startsWith('http')) {
-      return (
-        <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <FiLink className="text-blue-600" size={20} />
-            </div>
-            <div>
-              <h4 className="font-bold text-blue-900">رابط المشروع</h4>
-              <p className="text-xs text-blue-600">هذا الرابط للعرض فقط - غير قابل للتحميل</p>
-            </div>
-          </div>
-          
-          <div className="bg-white p-4 rounded-lg border border-blue-100">
-            <a 
-              href={doc}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 underline break-all flex items-center gap-2"
-            >
-              <FiExternalLink size={16} />
-              <span className="flex-1">{doc}</span>
-            </a>
-          </div>
-          
-          <div className="mt-3 flex items-center gap-2 text-xs text-blue-600 bg-blue-100/50 p-2 rounded-lg">
-            <FiInfo size={14} />
-            <span>هذا الرابط مقدم للاطلاع فقط ولا يمكن تحميل الملف مباشرة</span>
-          </div>
-        </div>
-      );
-    }
-
-    // إذا كان نص
     return (
-      <div className="bg-amber-50 p-6 rounded-xl border border-amber-100">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-            <FiFileText className="text-amber-600" size={20} />
-          </div>
-          <div>
-            <h4 className="font-bold text-amber-900">محتوى التوثيق</h4>
-            <p className="text-xs text-amber-600">نص وصفي - للعرض فقط</p>
-          </div>
+      <div className="bg-amber-50/30 p-8 rounded-xl border border-amber-200 text-center">
+        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <FiLock className="text-amber-600" size={32} />
         </div>
         
-        <div className="bg-white p-6 rounded-lg border border-amber-100 max-h-80 overflow-y-auto">
-          <p className="text-gray-700 whitespace-pre-line leading-relaxed">{doc}</p>
+        <h4 className="text-xl font-bold text-amber-800 mb-3">
+          ملف توثيق المشروع
+        </h4>
+        
+        <p className="text-amber-700 mb-4 max-w-md mx-auto">
+          ملف التوثيق الكامل للمشروع متاح ولكن لا يمكن الوصول إليه حفاظاً على حقوق الملكية الفكرية
+        </p>
+        
+        <div className="bg-white p-4 rounded-lg border border-amber-200 inline-block mx-auto">
+          <p className="text-sm text-gray-600 flex items-center gap-2">
+            <FiFileText className="text-amber-600" size={18} />
+            <span>{doc.split('/').pop() || 'ملف التوثيق'}</span>
+          </p>
         </div>
         
-        <div className="mt-3 flex items-center gap-2 text-xs text-amber-600 bg-amber-100/50 p-2 rounded-lg">
+        <div className="mt-4 text-xs text-amber-600 flex items-center justify-center gap-1">
           <FiInfo size={14} />
-          <span>هذا النص للعرض فقط ولا يمكن تحميله كملف</span>
+          <span>للاطلاع على ملف التوثيق، يرجى التواصل مع المشرف</span>
         </div>
       </div>
     );
@@ -241,7 +211,9 @@ const ProjectDetails: React.FC = () => {
                     src={getImageUrl(project.logo)}
                     alt={project.title}
                     className="w-full h-64 md:h-48 object-cover"
-                    onError={() => setImageError(true)}
+                    onError={(e) => {
+                      e.currentTarget.src = '/default-project-logo.png';
+                    }}
                   />
                 </div>
               </div>
@@ -438,14 +410,14 @@ const ProjectDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* ملف التوثيق - غير قابل للتحميل */}
+            {/* ملف التوثيق - رسالة توضيحية */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-xl font-bold text-[#31257D] mb-4 flex items-center gap-2">
                 <FiFileText className="text-[#4937BF]" />
                 ملف التوثيق
               </h3>
               
-              {renderDocumentation(project.documentation)}
+              {renderDocumentation(project.documentation_path)}
             </div>
 
             {/* معلومات إضافية - تاريخ البداية والنهاية بالتفصيل */}

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from core.models import Project, University, College, Branch, ProjectState
+from core.models import Project
 from core.serializers.users import UserSerializer
 from django.conf import settings
 
@@ -12,6 +12,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     # Supervisor fields
     supervisor_name = serializers.SerializerMethodField()
     co_supervisor_name = serializers.SerializerMethodField()
+
+    # Groups (with members)
+    groups = serializers.SerializerMethodField()
 
     # IDs and names
     state_id = serializers.SerializerMethodField()
@@ -26,6 +29,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     department_name = serializers.SerializerMethodField()
     program_id = serializers.SerializerMethodField()
     program_name = serializers.SerializerMethodField()
+
     # URLs
     logo_url = serializers.SerializerMethodField()
     documentation_url = serializers.SerializerMethodField()
@@ -42,37 +46,60 @@ class ProjectSerializer(serializers.ModelSerializer):
             'branch_id', 'branch_name',
             'start_date', 'end_date', 'field', 'tools',
             'logo', 'logo_url', 'documentation', 'documentation_url',
-            'supervisor_name', 'co_supervisor_name', 'created_by','department_id','department_name','program_id','program_name'
+            'supervisor_name', 'co_supervisor_name',
+            'groups',
+            'created_by', 'department_id', 'department_name',
+            'program_id', 'program_name'
         ]
 
-    # --- Supervisor logic ---
+    # ---------------------------
+    # Groups (lazy import fix)
+    # ---------------------------
+    def get_groups(self, obj):
+        from core.serializers.groups import GroupSerializer
+        groups = getattr(obj, 'groups', None)
+        if not groups:
+            return []
+        return GroupSerializer(groups.all(), many=True, context=self.context).data
+
+    # ---------------------------
+    # Supervisor logic
+    # ---------------------------
     def get_supervisor_name(self, obj):
         groups = getattr(obj, 'groups', None)
         if not groups:
             return "لا يوجد مشرف"
+
         for grp in groups.all():
             supervisors = getattr(grp, 'groupsupervisors', None)
             if not supervisors:
                 continue
+
             for gs in supervisors.all():
                 if gs.type == 'supervisor' and gs.user:
                     return gs.user.name or gs.user.username
+
         return "لا يوجد مشرف"
 
     def get_co_supervisor_name(self, obj):
         groups = getattr(obj, 'groups', None)
         if not groups:
             return None
+
         for grp in groups.all():
-            co_supervisors = getattr(grp, 'groupsupervisors', None)
-            if not co_supervisors:
+            supervisors = getattr(grp, 'groupsupervisors', None)
+            if not supervisors:
                 continue
-            for gs in co_supervisors.all():
+
+            for gs in supervisors.all():
                 if gs.type == 'co_supervisor' and gs.user:
                     return gs.user.name or gs.user.username
+
         return None
 
-    # --- IDs and names helpers ---
+    # ---------------------------
+    # IDs and names helpers
+    # ---------------------------
     def get_state_id(self, obj):
         return getattr(obj.state, 'ProjectStateId', None)
 
@@ -80,36 +107,38 @@ class ProjectSerializer(serializers.ModelSerializer):
         return getattr(obj.state, 'name', None)
 
     def get_university_id(self, obj):
-        return getattr(obj.university, 'uid', None)  # custom PK for University
+        return getattr(obj.university, 'uid', None)
 
     def get_university_name(self, obj):
         return getattr(obj.university, 'uname_ar', None)
 
     def get_college_id(self, obj):
-        return getattr(obj.college, 'cid', None)  # custom PK for College
+        return getattr(obj.college, 'cid', None)
+
+    def get_college_name(self, obj):
+        return getattr(obj.college, 'name_ar', None)
+
+    def get_branch_id(self, obj):
+        return getattr(obj.branch, 'bid', None)
+
+    def get_branch_name(self, obj):
+        return getattr(obj.branch, 'name', None)
+
+    def get_department_id(self, obj):
+        return getattr(obj.department, 'department_id', None)
 
     def get_department_name(self, obj):
         return getattr(obj.department, 'name', None)
 
     def get_program_id(self, obj):
         return getattr(obj.program, 'pid', None)
-    
-    def get_department_id(self, obj):
-        return getattr(obj.department, 'department_id', None)  # custom PK for Department
 
     def get_program_name(self, obj):
         return getattr(obj.program, 'p_name', None)
 
-    def get_college_name(self, obj):
-        return getattr(obj.college, 'name_ar', None)
-
-    def get_branch_id(self, obj):
-        return getattr(obj.branch, 'bid', None)  # replace 'bid' with actual PK if different
-
-    def get_branch_name(self, obj):
-        return getattr(obj.branch, 'name', None)
-
-    # --- URLs ---
+    # ---------------------------
+    # URLs
+    # ---------------------------
     def get_logo_url(self, obj):
         if obj.logo:
             request = self.context.get('request')
