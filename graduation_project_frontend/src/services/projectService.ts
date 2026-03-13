@@ -175,7 +175,43 @@ export const projectService = {
       return { colleges: [], supervisors: [], years: [], states: [], tools: [], fields: [] };
     }
   },
-
+// داخل projectService
+async getProjectGroups(projectId: number) {
+  try {
+    // المسار الصحيح: /groups/?project=projectId
+    // هذا سيجلب فقط المجموعات المرتبطة بهذا المشروع المحدد
+    const response = await api.get('/groups/', {
+      params: { project: projectId }  // التأكد من استخدام 'project' كمفتاح params
+    });
+    
+    console.log(`[projectService] جلب مجموعات المشروع ${projectId}:`, response.data);
+    
+    // التعامل مع هيكل البيانات
+    // قد يكون response.data مباشرة أو response.data.results
+    const groupsData = response.data?.results || response.data;
+    
+    // التحقق من أن البيانات مصفوفة
+    if (Array.isArray(groupsData)) {
+      return groupsData;
+    }
+    
+    console.warn('[projectService] البيانات المستلمة ليست مصفوفة:', groupsData);
+    return [];
+  } catch (error: any) {
+    console.error(`[projectService] فشل جلب مجموعات المشروع ${projectId}:`, error?.response?.data || error);
+    
+    // محاولة مسار بديل إذا فشل الأول
+    try {
+      console.log('[projectService] محاولة مسار بديل...');
+      const fallbackResponse = await api.get(`/projects/${projectId}/groups/`);
+      const fallbackData = fallbackResponse.data?.results || fallbackResponse.data;
+      return Array.isArray(fallbackData) ? fallbackData : [];
+    } catch (fallbackError) {
+      console.error('[projectService] فشل المسار البديل:', fallbackError);
+      return [];
+    }
+  }
+},
   async searchProjects(query: string, params?: any) {
     try {
       const response = await api.get('/projects/search/', {

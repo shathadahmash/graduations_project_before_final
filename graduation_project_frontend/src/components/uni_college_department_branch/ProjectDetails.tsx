@@ -4,10 +4,22 @@ import {
   FiCalendar, FiMapPin, FiBookOpen, FiTool, FiUser, FiUsers, 
   FiX, FiInfo, FiFileText, FiBriefcase, FiTag, FiClock, 
   FiImage, FiDownload, FiLink, FiArrowRight, FiHome,
-  FiChevronLeft, FiExternalLink, FiPaperclip, FiLock
+  FiChevronLeft, FiExternalLink, FiPaperclip, FiLock, FiLoader,
+  FiMail, FiPhone, FiHash
 } from 'react-icons/fi';
 import Navbar from '../Navbar';
 import { projectService } from '../../services/projectService';
+import api from '../../services/api';
+
+interface Student {
+  name: string;
+  id?: string;
+  email?: string;
+  phone?: string;
+  username?: string;
+  gender?: string;
+  cid?: string;
+}
 
 interface Project {
   project_id: number;
@@ -21,6 +33,7 @@ interface Project {
   branch_name: string;
   college_name: string;
   department_name?: string;
+  program_name?: string;
   start_date: number;
   end_date: number;
   external_company?: string;
@@ -28,14 +41,18 @@ interface Project {
   co_supervisor_name?: string;
   logo?: string;
   documentation_path?: string | null;
-  students?: { name: string; id?: string }[];
+  students?: Student[];
 }
 
 const ProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showStudentModal, setShowStudentModal] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8001';
 
@@ -45,6 +62,83 @@ const ProjectDetails: React.FC = () => {
     if (imagePath.startsWith('http')) return imagePath;
     const cleanPath = imagePath.replace(/^\/+/, '');
     return `${API_BASE_URL}/media/${cleanPath}`;
+  };
+
+  // دالة لجلب طلاب المشروع فقط (المجموعات المرتبطة بهذا المشروع)
+  const fetchProjectStudents = async (projectId: number) => {
+    try {
+      setLoadingStudents(true);
+      console.log(`🔍 جاري جلب طلاب المشروع رقم: ${projectId}`);
+      
+      // جلب المجموعات الخاصة بهذا المشروع فقط
+      const groups = await projectService.getProjectGroups(projectId);
+      
+      console.log('📦 البيانات المستلمة من API:', groups);
+      
+      const studentsMap = new Map();
+
+      if (Array.isArray(groups) && groups.length > 0) {
+        // تصفية المجموعات التي تخص هذا المشروع فقط
+        const projectGroups = groups.filter((group: any) => 
+          group.project === projectId || group.project_id === projectId
+        );
+        
+        console.log(`📊 عدد المجموعات التي تخص المشروع ${projectId}:`, projectGroups.length);
+        
+        // المرور على كل المجموعات التي تخص المشروع فقط
+        projectGroups.forEach((group: any, groupIndex: number) => {
+          console.log(`👥 المجموعة ${groupIndex + 1}:`, group);
+          
+          // التأكد من وجود members في المجموعة
+          if (group.members && Array.isArray(group.members)) {
+            console.log(`👤 عدد الأعضاء في المجموعة ${groupIndex + 1}:`, group.members.length);
+            
+            // المرور على كل عضو في المجموعة
+            group.members.forEach((member: any, memberIndex: number) => {
+              const user = member.user_detail;
+              if (user && user.id) {
+                console.log(`👨‍🎓 العضو ${memberIndex + 1}:`, user);
+                
+                // استخدام user.id كمفتاح لتجنب التكرار
+                if (!studentsMap.has(user.id)) {
+                  studentsMap.set(user.id, {
+                    name: user.name || 
+                          `${user.first_name || ""} ${user.last_name || ""}`.trim() || 
+                          user.username || 
+                          "طالب",
+                    id: user.id?.toString(),
+                    email: user.email || "لا يوجد",
+                    phone: user.phone || "لا يوجد",
+                    username: user.username || "",
+                    gender: user.gender || "",
+                    cid: user.CID || "",
+                  });
+                }
+              }
+            });
+          } else {
+            console.log(`⚠️ المجموعة ${groupIndex + 1} لا تحتوي على members`);
+          }
+        });
+      } else {
+        console.log('ℹ️ لا توجد مجموعات لهذا المشروع أو البيانات ليست مصفوفة');
+      }
+
+      // تحويل Map إلى مصفوفة
+      const studentsList = Array.from(studentsMap.values());
+      
+      console.log(`✅ تم العثور على ${studentsList.length} طالب للمشروع ${projectId}:`, studentsList);
+      setStudents(studentsList);
+      
+      // تحديث المشروع مع إضافة الطلاب
+      setProject(prev => prev ? { ...prev, students: studentsList } : null);
+      
+    } catch (error) {
+      console.error("❌ خطأ في جلب طلاب المشروع:", error);
+      setStudents([]);
+    } finally {
+      setLoadingStudents(false);
+    }
   };
 
   // دالة لاستخراج السنة
@@ -83,7 +177,7 @@ const ProjectDetails: React.FC = () => {
     return colors[type] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
   };
 
-  // دالة لعرض محتوى التوثيق - رسالة توضيحية فقط
+  // دالة لعرض محتوى التوثيق
   const renderDocumentation = (doc?: string | null) => {
     if (!doc || doc.trim() === '' || doc === 'null' || doc === 'undefined') {
       return (
@@ -124,6 +218,126 @@ const ProjectDetails: React.FC = () => {
     );
   };
 
+  // دالة عرض تفاصيل الطالب في نافذة منبثقة (بدون أزرار التواصل)
+  const StudentDetailsModal = () => {
+    if (!selectedStudent) return null;
+
+    return (
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300"
+        onClick={() => {
+          setSelectedStudent(null);
+          setShowStudentModal(false);
+        }}
+      >
+        <div 
+          className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100 animate-fadeIn"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* رأس النافذة */}
+          <div className="bg-gradient-to-l from-[#31257D] to-[#4937BF] p-5 flex justify-between items-center text-white">
+            <div className="flex items-center gap-2">
+              <FiUser size={20} />
+              <h2 className="text-xl font-bold">تفاصيل الطالب</h2>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedStudent(null);
+                setShowStudentModal(false);
+              }}
+              className="hover:bg-white/10 p-2 rounded-full transition-colors"
+            >
+              <FiX size={22} />
+            </button>
+          </div>
+
+          {/* محتوى النافذة */}
+          <div className="p-6 max-h-[70vh] overflow-y-auto">
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-24 h-24 bg-gradient-to-br from-[#31257D] to-[#4937BF] rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4">
+                {selectedStudent.name?.charAt(0) || 'ط'}
+              </div>
+              <h3 className="text-2xl font-bold text-[#31257D]">{selectedStudent.name}</h3>
+              {selectedStudent.username && (
+                <p className="text-gray-500">@{selectedStudent.username}</p>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {/* رقم الطالب */}
+              {selectedStudent.id && (
+                <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] rounded-xl">
+                  <div className="w-10 h-10 bg-[#31257D]/10 rounded-full flex items-center justify-center">
+                    <FiHash className="text-[#31257D]" size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">الرقم الجامعي</p>
+                    <p className="font-medium text-[#31257D]">{selectedStudent.id}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* البريد الإلكتروني - عرض فقط */}
+              <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] rounded-xl">
+                <div className="w-10 h-10 bg-[#31257D]/10 rounded-full flex items-center justify-center">
+                  <FiMail className="text-[#31257D]" size={18} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500">البريد الإلكتروني</p>
+                  <p className={`font-medium ${selectedStudent.email && selectedStudent.email !== "لا يوجد" ? 'text-[#31257D]' : 'text-gray-400'}`}>
+                    {selectedStudent.email || "لا يوجد"}
+                  </p>
+                </div>
+              </div>
+
+              {/* رقم الهاتف - عرض فقط */}
+              <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] rounded-xl">
+                <div className="w-10 h-10 bg-[#31257D]/10 rounded-full flex items-center justify-center">
+                  <FiPhone className="text-[#31257D]" size={18} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">رقم الهاتف</p>
+                  <p className={`font-medium ${selectedStudent.phone && selectedStudent.phone !== "لا يوجد" ? 'text-[#31257D]' : 'text-gray-400'}`}>
+                    {selectedStudent.phone || "لا يوجد"}
+                  </p>
+                </div>
+              </div>
+
+              {/* الجنس */}
+              {selectedStudent.gender && (
+                <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] rounded-xl">
+                  <div className="w-10 h-10 bg-[#31257D]/10 rounded-full flex items-center justify-center">
+                    <FiUser className="text-[#31257D]" size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">الجنس</p>
+                    <p className="font-medium text-[#31257D]">
+                      {selectedStudent.gender === 'Male' ? 'ذكر' : 
+                       selectedStudent.gender === 'Female' ? 'أنثى' : 'غير محدد'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* الرقم الوطني */}
+              {selectedStudent.cid && (
+                <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] rounded-xl">
+                  <div className="w-10 h-10 bg-[#31257D]/10 rounded-full flex items-center justify-center">
+                    <FiHash className="text-[#31257D]" size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">الرقم الوطني</p>
+                    <p className="font-medium text-[#31257D]">{selectedStudent.cid}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // جلب بيانات المشروع
   useEffect(() => {
     const fetchProject = async () => {
@@ -131,6 +345,11 @@ const ProjectDetails: React.FC = () => {
         setLoading(true);
         const response = await projectService.getProjectById(Number(id));
         setProject(response);
+        
+        // بعد جلب المشروع، جلب الطلاب
+        if (response?.project_id) {
+          await fetchProjectStudents(response.project_id);
+        }
       } catch (error) {
         console.error('خطأ في جلب بيانات المشروع:', error);
       } finally {
@@ -297,6 +516,20 @@ const ProjectDetails: React.FC = () => {
                   </div>
                 )}
                 
+                {project.program_name && (
+                  <div className="border-b border-gray-100 pb-3">
+                    <p className="text-sm text-gray-500 mb-1">البرنامج</p>
+                    <p className="font-bold text-[#31257D]">{project.program_name}</p>
+                  </div>
+                )}
+                
+                {project.branch_name && (
+                  <div className="border-b border-gray-100 pb-3">
+                    <p className="text-sm text-gray-500 mb-1">الفرع</p>
+                    <p className="font-bold text-[#31257D]">{project.branch_name}</p>
+                  </div>
+                )}
+                
                 {project.external_company && (
                   <div>
                     <p className="text-sm text-gray-500 mb-1">الجهة الخارجية</p>
@@ -366,51 +599,90 @@ const ProjectDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* الطلاب المشاركون */}
+            {/* الطلاب المشاركون - مع إمكانية عرض التفاصيل */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-xl font-bold text-[#31257D] mb-4 flex items-center gap-2">
-                <FiUsers className="text-[#4937BF]" />
-                الطلاب المشاركون
-                {project.students && project.students.length > 0 && (
-                  <span className="bg-[#31257D] text-white text-sm px-2 py-0.5 rounded-full mr-2">
-                    {project.students.length}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-[#31257D] flex items-center gap-2">
+                  <FiUsers className="text-[#4937BF]" />
+                  الطلاب المشاركون
+                </h3>
+                {students.length > 0 && (
+                  <span className="bg-[#31257D] text-white text-sm px-3 py-1 rounded-full">
+                    {students.length}
                   </span>
                 )}
-              </h3>
-              
-              <div className="bg-[#F8FAFC] p-6 rounded-lg">
-                {project.students && project.students.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {project.students.map((student, index) => (
-                      <div 
-                        key={index} 
-                        className="bg-white p-4 rounded-lg border border-[#31257D]/10 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#31257D]/10 rounded-full flex items-center justify-center">
-                            <FiUser className="text-[#31257D]" size={18} />
-                          </div>
-                          <div>
-                            <p className="font-bold text-[#31257D]">{student.name}</p>
-                            {student.id && (
-                              <p className="text-xs text-gray-500">الرقم الجامعي: {student.id}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <FiUsers className="mx-auto mb-3 text-gray-400" size={40} />
-                    <p className="text-gray-500">لا يوجد طلاب مسجلين في هذا المشروع</p>
-                    <p className="text-sm text-gray-400 mt-1">يمكن إضافة الطلاب لاحقاً</p>
-                  </div>
+                {loadingStudents && (
+                  <FiLoader className="animate-spin text-[#4937BF]" size={20} />
                 )}
               </div>
+              
+              {loadingStudents ? (
+                <div className="text-center py-8">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#31257D]/20 border-t-[#31257D]"></div>
+                  <p className="mt-4 text-gray-500">جاري تحميل الطلاب...</p>
+                </div>
+              ) : students.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {students.map((student, index) => {
+                    const hasEmail = student.email && student.email !== "لا يوجد" && student.email !== "";
+                    const hasPhone = student.phone && student.phone !== "لا يوجد" && student.phone !== "";
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        onClick={() => {
+                          setSelectedStudent(student);
+                          setShowStudentModal(true);
+                        }}
+                        className="flex items-center gap-3 p-4 rounded-lg border border-gray-200 bg-gray-50 hover:shadow-md transition-all cursor-pointer hover:border-[#31257D]/30 group"
+                      >
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#31257D] to-[#4937BF] rounded-full flex items-center justify-center text-white font-bold text-lg group-hover:scale-105 transition-transform">
+                          {student.name?.charAt(0) || 'ط'}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-[#31257D] text-base">{student.name}</p>
+                          <div className="flex items-center gap-3 mt-1 text-xs">
+                            {hasEmail ? (
+                              <div className="flex items-center gap-1 text-gray-500">
+                                <FiMail size={12} />
+                                <span className="truncate max-w-[100px]">{student.email}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-gray-400">
+                                <FiMail size={12} />
+                                <span>لا يوجد بريد</span>
+                              </div>
+                            )}
+                            {hasPhone ? (
+                              <div className="flex items-center gap-1 text-gray-500">
+                                <FiPhone size={12} />
+                                <span>{student.phone}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-gray-400">
+                                <FiPhone size={12} />
+                                <span>لا يوجد هاتف</span>
+                              </div>
+                            )}
+                          </div>
+                          {student.id && (
+                            <p className="text-xs text-gray-400 mt-1">رقم: {student.id}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <FiUsers className="mx-auto mb-3 text-gray-400" size={40} />
+                  <p className="text-gray-500 font-medium">لا يوجد طلاب مشاركين في هذا المشروع</p>
+                  <p className="text-sm text-gray-400 mt-1">يمكن إضافة الطلاب لاحقاً</p>
+                </div>
+              )}
             </div>
 
-            {/* ملف التوثيق - رسالة توضيحية */}
+            {/* ملف التوثيق */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-xl font-bold text-[#31257D] mb-4 flex items-center gap-2">
                 <FiFileText className="text-[#4937BF]" />
@@ -447,6 +719,9 @@ const ProjectDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* نافذة تفاصيل الطالب - بدون أزرار */}
+      <StudentDetailsModal />
 
       {/* إضافة تنسيقات إضافية */}
       <style>{`
