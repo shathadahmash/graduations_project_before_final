@@ -207,7 +207,7 @@ const UniversityDetails: React.FC = () => {
                       عرض الأقسام
                     </button>
                     <Link
-                      to={`/ProjectCollegeSearch/${college.id}`}
+                      to={`/college/${college.id}`}
                       state={{ college }}
                       className="text-center bg-[#31257D] text-white py-2 rounded-lg text-sm font-medium transition-all duration-300 group-hover:bg-white group-hover:text-[#31257D]"
                     >

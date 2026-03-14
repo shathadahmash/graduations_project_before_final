@@ -16,6 +16,9 @@ import ProjectCollegeSearch from './components/ProjectCollegeSearch';
 import ProjectUniversitySearch from './components/ProjectUniversitySearch';
 import ProjectDepartmentSearch from './components/ProjectDepartmentSearch';
 import ProjectProgramSearch from './components/ProjectProgramSearch';
+import  CollegeDetails  from './components/CollegeDetails';
+
+
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -63,7 +66,8 @@ const App: React.FC = () => {
         <Route path="/ProjectCollegeSearch/:collegeId" element={<ProjectCollegeSearch />} />
         <Route path="/ProjectDepartmentSearch/:deptId" element={<ProjectDepartmentSearch />} />
         <Route path="/ProjectProgramSearch/:programId" element={<ProjectProgramSearch />} />
-
+        {/* College Details */}
+        <Route path="/college/:id" element={<CollegeDetails />} />
         {/* University Details */}
         <Route path="/university/:id" element={<UniversityDetails />} />
 
