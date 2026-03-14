@@ -64,6 +64,52 @@ const ProjectDetails: React.FC = () => {
     return `${API_BASE_URL}/media/${cleanPath}`;
   };
 
+  // دالة لاستخراج اسم الملف من المسار
+  const getFileNameFromPath = (filePath: string): string => {
+    if (!filePath) return '';
+    
+    // إزالة أي معلمات استعلام من الرابط
+    const cleanPath = filePath.split('?')[0];
+    
+    // استخراج اسم الملف من المسار
+    const fileName = cleanPath.split('/').pop() || '';
+    
+    // فك ترميز أسماء الملفات (للدعم العربي)
+    try {
+      return decodeURIComponent(fileName);
+    } catch {
+      return fileName;
+    }
+  };
+
+  // دالة للتحقق إذا كان النص يحتوي على عربي
+  const containsArabic = (text: string): boolean => {
+    const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    return arabicPattern.test(text);
+  };
+
+  // دالة لعرض اسم الملف مع الحفاظ على اتجاه النص
+  const renderFileName = (fileName: string) => {
+    if (!fileName) return 'ملف التوثيق';
+    
+    // إزالة الامتداد لعرضه بشكل منفصل
+    const extension = fileName.split('.').pop() || '';
+    const nameWithoutExt = fileName.substring(0, fileName.length - extension.length - 1);
+    
+    // التحقق من اللغة
+    const hasArabic = containsArabic(nameWithoutExt);
+    
+    return (
+      <div className="flex items-center gap-2">
+        <FiFileText className={`${hasArabic ? 'text-amber-600' : 'text-blue-600'}`} size={18} />
+        <div className={`flex items-center gap-1 ${hasArabic ? 'font-arabic' : 'font-english'}`} dir={hasArabic ? 'rtl' : 'ltr'}>
+          <span className="truncate max-w-[200px]">{nameWithoutExt}</span>
+          <span className="text-gray-400 text-xs">.{extension}</span>
+        </div>
+      </div>
+    );
+  };
+
   // دالة لجلب طلاب المشروع فقط (المجموعات المرتبطة بهذا المشروع)
   const fetchProjectStudents = async (projectId: number) => {
     try {
@@ -177,7 +223,7 @@ const ProjectDetails: React.FC = () => {
     return colors[type] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
   };
 
-  // دالة لعرض محتوى التوثيق
+  // دالة لعرض محتوى التوثيق - محدثة لعرض اسم الملف بلغة المشروع
   const renderDocumentation = (doc?: string | null) => {
     if (!doc || doc.trim() === '' || doc === 'null' || doc === 'undefined') {
       return (
@@ -188,6 +234,9 @@ const ProjectDetails: React.FC = () => {
         </div>
       );
     }
+
+    const fileName = getFileNameFromPath(doc);
+    const hasArabic = containsArabic(fileName);
 
     return (
       <div className="bg-amber-50/30 p-8 rounded-xl border border-amber-200 text-center">
@@ -203,11 +252,8 @@ const ProjectDetails: React.FC = () => {
           ملف التوثيق الكامل للمشروع متاح ولكن لا يمكن الوصول إليه حفاظاً على حقوق الملكية الفكرية
         </p>
         
-        <div className="bg-white p-4 rounded-lg border border-amber-200 inline-block mx-auto">
-          <p className="text-sm text-gray-600 flex items-center gap-2">
-            <FiFileText className="text-amber-600" size={18} />
-            <span>{doc.split('/').pop() || 'ملف التوثيق'}</span>
-          </p>
+        <div className={`bg-white p-4 rounded-lg border border-amber-200 inline-block mx-auto ${hasArabic ? 'rtl' : 'ltr'}`}>
+          {renderFileName(fileName)}
         </div>
         
         <div className="mt-4 text-xs text-amber-600 flex items-center justify-center gap-1">
@@ -682,7 +728,7 @@ const ProjectDetails: React.FC = () => {
               )}
             </div>
 
-            {/* ملف التوثيق */}
+            {/* ملف التوثيق - مع عرض اسم الملف بلغة المشروع */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-xl font-bold text-[#31257D] mb-4 flex items-center gap-2">
                 <FiFileText className="text-[#4937BF]" />
@@ -731,6 +777,12 @@ const ProjectDetails: React.FC = () => {
         }
         .animate-fadeIn {
           animation: fadeIn 0.3s ease-out;
+        }
+        .font-arabic {
+          font-family: 'Cairo', sans-serif;
+        }
+        .font-english {
+          font-family: 'Poppins', sans-serif;
         }
       `}</style>
     </div>

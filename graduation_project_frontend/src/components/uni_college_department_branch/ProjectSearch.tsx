@@ -1,9 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiCalendar, FiMapPin, FiBookOpen, FiTool, FiUser, FiUsers, FiX, FiSearch, FiSliders, FiFilter, FiInfo, FiEye, FiFileText, FiBriefcase, FiTag, FiClock, FiImage, FiDownload, FiLink, FiArrowLeft, FiUserCheck, FiLoader } from 'react-icons/fi';
 import Navbar from '../Navbar';
 import { projectService } from '../../services/projectService';
 import { userService } from '../../services/userService';
+
+// تعريف واجهة Member
+interface Member {
+  user: number;
+  user_detail?: {
+    id?: number;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+    email?: string;
+  };
+}
+
+// تعريف واجهة Group
+interface Group {
+  id?: number;
+  group_name?: string;
+  members?: Member[];
+}
 
 interface Project {
   project_id: number;
@@ -11,12 +31,14 @@ interface Project {
   description: string;
   project_type: string;
   state: string;
+  state_name?: string;
   field: string;
   tools: string;
   university_name: string;
   branch_name: string;
   college_name: string;
   department_name?: string;
+  program_name?: string;
   start_date: number;
   end_date: number;
   external_company?: string;
@@ -26,6 +48,7 @@ interface Project {
   documentation?: string;
   students?: { name: string; id?: string }[];
   studentsLoading?: boolean;
+  groups?: Group[];
 }
 
 interface GroupMember {
@@ -60,7 +83,20 @@ interface FilterOptions {
   project_types: { value: string; label: string }[];
 }
 
+// مكون InfoCard منفصل
+const InfoCard: React.FC<{ icon: React.ReactNode; title: string; value: string }> = ({ icon, title, value }) => (
+  <div className="flex items-start gap-2 p-3 rounded-lg border bg-gray-50">
+    <div className="text-[#31257D] text-lg">{icon}</div>
+    <div>
+      <span className="text-gray-500 text-xs">{title}</span>
+      <div className="text-gray-800 font-medium text-sm">{value}</div>
+    </div>
+  </div>
+);
+
 const ProjectSearch: React.FC = () => {
+  const navigate = useNavigate();
+  
   // تعريف جميع حالات useState أولاً
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,52 +153,57 @@ const ProjectSearch: React.FC = () => {
     return `${API_BASE_URL}/media/${cleanPath}`;
   };
 
-  // دالة لجلب طلاب المشروع
+  // دالة لجلب طلاب المشروع (مازالت موجودة لكن لن نستخدمها في العرض)
   const fetchProjectStudents = async (projectId: number) => {
     try {
       const response = await projectService.getProjectGroups(projectId);
-
-      console.log("GROUP RESPONSE:", response);
-
       const groups = response?.data || response?.results || response || [];
-      const students: { name: string; id?: string }[] = [];
+      
+      // استخدام Map لتجنب التكرار
+      const studentsMap = new Map();
 
       if (Array.isArray(groups)) {
         groups.forEach((group: any) => {
           if (group.members && Array.isArray(group.members)) {
             group.members.forEach((member: any) => {
-              const user = member.user_detail;
-
+              const user = member.user_detail || member.user;
+              
               if (user) {
-                students.push({
-                  name:
-                    user.name ||
-                    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-                    user.username ||
-                    "طالب",
-                  id: user.id?.toString(),
-                });
+                const userId = user.id || user.user_id;
+                const studentName = user.name ||
+                  `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+                  user.username ||
+                  "طالب";
+                
+                if (userId && !studentsMap.has(userId)) {
+                  studentsMap.set(userId, {
+                    name: studentName,
+                    id: userId?.toString(),
+                  });
+                } else if (!userId) {
+                  const key = studentName + Math.random();
+                  studentsMap.set(key, {
+                    name: studentName,
+                  });
+                }
               }
             });
           }
         });
       }
 
-      return students;
+      return Array.from(studentsMap.values());
     } catch (error) {
       console.error("خطأ في جلب طلاب المشروع:", error);
       return [];
     }
   };
-  // دالة لفتح نافذة العرض السريع وجلب الطلاب
+
+  // دالة لفتح نافذة العرض السريع (بدون جلب الطلاب)
   const handleQuickView = async (project: Project) => {
     setSelectedProject(project);
-    setLoadingStudents(true);
+    // لا نقوم بجلب الطلاب
     setSelectedProjectStudents([]);
-
-    const students = await fetchProjectStudents(project.project_id);
-    setSelectedProjectStudents(students);
-    setLoadingStudents(false);
   };
 
   // جلب خيارات الفلاتر
@@ -211,7 +252,7 @@ const ProjectSearch: React.FC = () => {
     }
   }, []);
 
-  // جلب المشاريع - تعديل هنا لإصلاح الخطأ
+  // جلب المشاريع
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
@@ -227,30 +268,31 @@ const ProjectSearch: React.FC = () => {
 
       const response = await projectService.getProjects(params);
       const data = Array.isArray(response) ? response : response?.results || response?.data || [];
-      console.log('------------------------------------------------------', data)
+      
       const processedData = data.map((p: any) => {
-        // التحقق من وجود القيم قبل استخدامها
         const universityName = p.university?.name || p.university_name || 'غير محدد';
-        console.log(p.stateName);
         const branchName = p.branch?.name || p.branch_name || 'غير محدد';
         const collegeName = p.college?.name || p.college_name || 'غير محدد';
         const departmentName = p.department?.name || p.department_name;
+        const programName = p.program?.name || p.program_name;
         const stateName = p.state?.name || p.state || 'غير محدد';
         const externalCompanyName = p.external_company?.name || p.external_company;
         const logo = p.logo;
-        console.log("--------------------------", logo);
+
         return {
           project_id: p.project_id || p.id,
           title: p.title || 'بدون عنوان',
           description: p.description || '',
           project_type: p.project_type || 'غير محدد',
           state: stateName,
+          state_name: stateName,
           field: p.field || 'غير محدد',
           tools: p.tools || 'غير محدد',
           university_name: universityName,
           branch_name: branchName,
           college_name: collegeName,
           department_name: departmentName,
+          program_name: programName,
           start_date: p.start_date,
           end_date: p.end_date,
           external_company: externalCompanyName,
@@ -259,7 +301,8 @@ const ProjectSearch: React.FC = () => {
           logo: logo,
           documentation: p.documentation,
           students: [],
-          studentsLoading: false
+          studentsLoading: false,
+          groups: p.groups || []
         };
       });
 
@@ -274,7 +317,7 @@ const ProjectSearch: React.FC = () => {
     }
   }, [filters, searchQuery]);
 
-  // دالة لإزالة التكرار من المصفوفات
+  // دوال لإزالة التكرار من المصفوفات
   const removeDuplicatesByName = <T extends { id: number; name: string }>(items: T[]): T[] => {
     const uniqueMap = new Map<string, T>();
     items.forEach(item => {
@@ -297,7 +340,7 @@ const ProjectSearch: React.FC = () => {
 
   // دالة لاستخراج السنة من التاريخ الرقمي
   const extractYear = (date: number | string): string => {
-    if (!date) return '';
+    if (!date) return 'غير محدد';
     const dateStr = date.toString();
     return dateStr.substring(0, 4);
   };
@@ -312,14 +355,18 @@ const ProjectSearch: React.FC = () => {
     return types[type] || type;
   };
 
-  // ترجمة نوع المشروع مع لون مناسب
-  const getProjectTypeBadge = (type: string) => {
-    const badges: { [key: string]: { color: string; bg: string; label: string } } = {
-      'Governmental': { color: 'text-blue-700', bg: 'bg-blue-100', label: 'حكومي' },
-      'External': { color: 'text-green-700', bg: 'bg-green-100', label: 'شركات خارجية' },
-      'Proposed': { color: 'text-purple-700', bg: 'bg-purple-100', label: 'مقترح' }
-    };
-    return badges[type] || { color: 'text-gray-700', bg: 'bg-gray-100', label: type };
+  // الحصول على لون نوع المشروع
+  const getProjectTypeBadgeClass = (type: string) => {
+    switch (type) {
+      case "Governmental":
+        return "bg-green-100 text-green-800";
+      case "External":
+        return "bg-blue-100 text-blue-800";
+      case "Proposed":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
   };
 
   useEffect(() => {
@@ -579,37 +626,40 @@ const ProjectSearch: React.FC = () => {
 
             <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {projects.map(p => {
-                const badge = getProjectTypeBadge(p.project_type);
+                const badgeClass = getProjectTypeBadgeClass(p.project_type);
+                const badgeLabel = getProjectTypeLabel(p.project_type);
+                
                 return (
                   <div
                     key={p.project_id}
                     className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-[#31257D]/10 flex flex-col h-full group"
                   >
                     {/* صورة المشروع */}
-               <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#31257D]/5 to-[#4937BF]/5">
+                    <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#31257D]/5 to-[#4937BF]/5">
+                      {p.logo ? (
+                        <img
+                          src={getImageUrl(p.logo)}
+                          alt={p.title}
+                          className="w-full h-full object-cover transition-all duration-300"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/default-project-logo.png';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                          <FiImage size={40} className="mb-2" />
+                          <span className="text-xs">لا توجد صورة</span>
+                        </div>
+                      )}
 
-                    {p.logo ? (
-                      <img
-                        src={getImageUrl(p.logo)}
-                        alt={p.title}
-                        className="w-full h-full object-cover transition-all duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                        <FiImage size={40} className="mb-2" />
-                        <span className="text-xs">لا توجد صورة</span>
-                      </div>
-                    )}
-
-                    {p.project_type !== 'غير محدد' && (
-                      <div className="absolute top-3 right-3">
-                        <span className={`${badge.bg} ${badge.color} px-3 py-1 rounded-full text-xs font-bold shadow-lg`}>
-                          {badge.label}
-                        </span>
-                      </div>
-                    )}
-
-                  </div>
+                      {p.project_type !== 'غير محدد' && (
+                        <div className="absolute top-3 right-3">
+                          <span className={`${badgeClass} px-3 py-1 rounded-full text-xs font-bold shadow-lg`}>
+                            {badgeLabel}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
                     {/* محتوى البطاقة */}
                     <div className="p-5 flex-1 flex flex-col">
@@ -650,7 +700,7 @@ const ProjectSearch: React.FC = () => {
                             <span className="text-xs">السنة</span>
                           </div>
                           <p className="font-medium text-[#31257D] text-sm">
-                            {extractYear(p.start_date) || 'غير محدد'}
+                            {extractYear(p.start_date)}
                           </p>
                         </div>
 
@@ -690,140 +740,122 @@ const ProjectSearch: React.FC = () => {
           </>
         )}
 
-        {/* نافذة العرض السريع المنبثقة */}
+        {/* نافذة العرض السريع المنبثقة - بدون الطلاب المشاركون */}
         {selectedProject && (
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all duration-300"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
             onClick={() => {
               setSelectedProject(null);
               setSelectedProjectStudents([]);
             }}
           >
             <div
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100 animate-fadeIn"
+              className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden relative border border-gray-200"
               onClick={e => e.stopPropagation()}
             >
-              {/* رأس النافذة */}
-              <div className="bg-gradient-to-l from-[#31257D] to-[#4937BF] p-5 flex justify-between items-center text-white">
-                <div className="flex items-center gap-2">
-                  <FiInfo size={20} />
-                  <h2 className="text-xl font-bold">عرض سريع للمشروع</h2>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedProject(null);
-                    setSelectedProjectStudents([]);
-                  }}
-                  className="hover:bg-white/10 p-2 rounded-full transition-colors"
-                >
-                  <FiX size={22} />
-                </button>
-              </div>
+              {/* زر الإغلاق */}
+              <button
+                onClick={() => {
+                  setSelectedProject(null);
+                  setSelectedProjectStudents([]);
+                }}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
+              >
+                <FiX size={24} />
+              </button>
+              
 
-              {/* محتوى النافذة */}
-              <div className="p-6 max-h-[70vh] overflow-y-auto">
-                <div className="flex gap-4 mb-6">
-                  {/* صورة مصغرة */}
-                  <div className="w-24 h-24 bg-[#F8FAFC] rounded-lg overflow-hidden border border-[#31257D]/10 flex-shrink-0">
-                    <img
-                      src={getImageUrl(selectedProject.logo)}
-                      alt={selectedProject.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/default-project-logo.png';
-                      }}
-                    />
-                  </div>
+              <div className="p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+                {/* Header مع الصورة والعنوان */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <img
+                    src={getImageUrl(selectedProject.logo)}
+                    alt={selectedProject.title}
+                    className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl border"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "/default-project-logo.png";
+                    }}
+                  />
 
-                  {/* عنوان ونوع المشروع */}
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-[#31257D] mb-2">{selectedProject.title}</h3>
-                    {selectedProject.project_type !== 'غير محدد' && (
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${selectedProject.project_type === 'Governmental' ? 'bg-blue-100 text-blue-700' :
-                        selectedProject.project_type === 'External' ? 'bg-green-100 text-green-700' :
-                          'bg-purple-100 text-purple-700'
-                        }`}>
+                    <h2 className="text-2xl font-bold text-[#31257D]">
+                      {selectedProject.title}
+                    </h2>
+
+                    <div className="mt-2 flex gap-2 flex-wrap">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-bold ${getProjectTypeBadgeClass(
+                          selectedProject.project_type
+                        )}`}
+                      >
                         {getProjectTypeLabel(selectedProject.project_type)}
                       </span>
-                    )}
-                  </div>
-                </div>
 
-                {/* معلومات سريعة */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-[#F8FAFC] p-3 rounded-lg">
-                    <p className="text-xs text-[#4A5568] mb-1">الجامعة</p>
-                    <p className="font-medium text-[#31257D]">{selectedProject.university_name}</p>
-                  </div>
-                  <div className="bg-[#F8FAFC] p-3 rounded-lg">
-                    <p className="text-xs text-[#4A5568] mb-1">الكلية</p>
-                    <p className="font-medium text-[#31257D]">{selectedProject.college_name}</p>
-                  </div>
-                  <div className="bg-[#F8FAFC] p-3 rounded-lg">
-                    <p className="text-xs text-[#4A5568] mb-1">المشرف</p>
-                    <p className="font-medium text-[#31257D]">{selectedProject.supervisor_name}</p>
-                  </div>
-                  <div className="bg-[#F8FAFC] p-3 rounded-lg">
-                    <p className="text-xs text-[#4A5568] mb-1">السنة</p>
-                    <p className="font-medium text-[#31257D]">{extractYear(selectedProject.start_date)}</p>
-                  </div>
-                </div>
-
-                {/* ملخص سريع */}
-                <div className="bg-[#F8FAFC] p-4 rounded-lg mb-4">
-                  <h4 className="font-bold text-[#31257D] mb-2 flex items-center gap-2">
-                    <FiBookOpen className="text-[#4937BF]" />
-                    ملخص المشروع
-                  </h4>
-                  <p className="text-[#4A5568] text-sm line-clamp-3">
-                    {selectedProject.description || 'لا يوجد ملخص متاح'}
-                  </p>
-                </div>
-
-                {/* عرض أعضاء المجموعة */}
-                <div className="bg-[#F8FAFC] p-4 rounded-lg mb-4">
-                  <h4 className="font-bold text-[#31257D] mb-3 flex items-center gap-2">
-                    <FiUsers className="text-[#4937BF]" />
-                    أعضاء المجموعة
-                    {loadingStudents && <FiLoader className="animate-spin mr-2" size={16} />}
-                  </h4>
-
-                  {loadingStudents ? (
-                    <div className="text-center py-4">
-                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#31257D]"></div>
-                      <p className="text-sm text-[#4A5568] mt-2">جاري تحميل أعضاء المجموعة...</p>
+                      <span className="px-2 py-1 rounded-full text-xs bg-gray-200">
+                        {selectedProject.state_name || selectedProject.state || "غير محدد"}
+                      </span>
                     </div>
-                  ) : selectedProjectStudents.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedProjectStudents.map((student, index) => (
-                        <div key={index} className="bg-white p-2 rounded-lg border border-[#31257D]/10 flex items-center gap-2">
-                          <div className="w-8 h-8 bg-[#31257D]/10 rounded-full flex items-center justify-center">
-                            <FiUserCheck className="text-[#31257D]" size={16} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-[#31257D] text-sm">{student.name}</p>
-                            {student.id && <p className="text-xs text-gray-500">رقم: {student.id}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[#4A5568] text-center py-2">لا يوجد أعضاء في هذه المجموعة</p>
+                  </div>
+                </div>
+
+                {/* الوصف */}
+                <div className="bg-gray-50 p-4 rounded-lg text-gray-700 text-sm">
+                  {selectedProject.description || "لا يوجد ملخص متاح"}
+                </div>
+
+                {/* بطاقات المعلومات - بتصميم InfoCard */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <InfoCard icon={<FiMapPin />} title="الجامعة" value={selectedProject.university_name || "غير محدد"} />
+                  <InfoCard icon={<FiBookOpen />} title="الكلية" value={selectedProject.college_name || "غير محدد"} />
+                  <InfoCard icon={<FiBookOpen />} title="القسم" value={selectedProject.department_name || "غير محدد"} />
+                  {selectedProject.program_name && (
+                    <InfoCard icon={<FiBookOpen />} title="البرنامج" value={selectedProject.program_name} />
                   )}
+                  <InfoCard icon={<FiBookOpen />} title="الفرع" value={selectedProject.branch_name || "غير محدد"} />
+                  <InfoCard
+                    icon={<FiCalendar />}
+                    title="المدة"
+                    value={`${extractYear(selectedProject.start_date)} - ${extractYear(selectedProject.end_date)}`}
+                  />
+                  <InfoCard icon={<FiUser />} title="المشرف" value={selectedProject.supervisor_name || "غير محدد"} />
+                  {selectedProject.co_supervisor_name && (
+                    <InfoCard icon={<FiUser />} title="مشرف مساعد" value={selectedProject.co_supervisor_name} />
+                  )}
+                  {selectedProject.external_company && (
+                    <InfoCard icon={<FiTool />} title="الشركة" value={selectedProject.external_company} />
+                  )}
+                  <InfoCard icon={<FiTool />} title="الأدوات" value={selectedProject.tools || "غير محدد"} />
+                  <InfoCard icon={<FiUsers />} title="المجال" value={selectedProject.field || "غير محدد"} />
                 </div>
 
-                {/* زر الانتقال للصفحة الكاملة */}
-                <Link
-                  to={`/projects/${selectedProject.project_id}`}
-                  className="w-full py-3 bg-gradient-to-l from-[#31257D] to-[#4937BF] text-white rounded-lg font-bold hover:from-[#4937BF] hover:to-[#31257D] transition-all duration-300 flex items-center justify-center gap-2"
+                {/* تم إزالة قسم الطلاب المشاركون */}
+
+                {/* رابط المستندات */}
+                {selectedProject.documentation && (
+                  <a
+                    href={selectedProject.documentation.startsWith('http') 
+                      ? selectedProject.documentation 
+                      : `${API_BASE_URL}${selectedProject.documentation}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-blue-600 hover:underline"
+                  >
+                    <FiFileText />
+                    عرض المستندات / الملفات
+                  </a>
+                )}
+
+                {/* زر التفاصيل الكاملة */}
+                <button
                   onClick={() => {
+                    navigate(`/projectdetail/${selectedProject.project_id}`, { state: { project: selectedProject } });
                     setSelectedProject(null);
                     setSelectedProjectStudents([]);
                   }}
+                  className="mt-6 w-full bg-gradient-to-r from-[#31257D] to-[#4937BF] text-white py-2.5 rounded-lg font-semibold hover:scale-105 transition-all"
                 >
-                  <span>عرض التفاصيل الكاملة</span>
-                  <FiArrowLeft size={18} />
-                </Link>
+                  عرض التفاصيل الكاملة
+                </button>
               </div>
             </div>
           </div>
