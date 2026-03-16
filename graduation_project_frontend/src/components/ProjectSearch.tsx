@@ -121,7 +121,7 @@ const ProjectSearch: React.FC<Props> = ({ universityId, colleges }) => {
       if (filters.co_supervisor) params.co_supervisor = filters.co_supervisor;
       if (filters.project_type) params.project_type = filters.project_type;
 
-      const response = await projectService.getProjects(params);
+      const response = await projectService.getPublicProjects(params);
       const data = Array.isArray(response) ? response : response?.results || response?.data || [];
       console.log('المشاريع المستلمة:', data);
       setProjects(data.map((p: any) => ({
