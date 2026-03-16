@@ -17,6 +17,10 @@ import ProjectUniversitySearch from './components/ProjectUniversitySearch';
 import ProjectDepartmentSearch from './components/ProjectDepartmentSearch';
 import ProjectProgramSearch from './components/ProjectProgramSearch';
 
+import CollegeDetails from './components/CollegeDetails';
+     // NEW
+
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -28,6 +32,7 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -53,25 +58,30 @@ const App: React.FC = () => {
         />
 
         {/* Project Routes */}
-        <Route path="/ProjectSearch" element={<ProjectSearch />} />
         <Route path="/projects/:id" element={<ProjectDetails />} />
-        <Route path="/projectdetail" element={<ProjectDetails />} />
         <Route path="/projectdetail/:id" element={<ProjectDetails />} />
+        <Route path="/projectdetail" element={<ProjectDetails />} />
 
         {/* Project Search Variants */}
+        <Route path="/ProjectSearch" element={<ProjectSearch />} />
         <Route path="/ProjectUniversitySearch" element={<ProjectUniversitySearch />} />
-        <Route path="/ProjectCollegeSearch" element={<ProjectCollegeSearch />} />
-        <Route path="/ProjectDepartmentSearch" element={<ProjectDepartmentSearch />} />
-        <Route path="/ProjectProgramSearch" element={<ProjectProgramSearch />} />
+        <Route path="/ProjectCollegeSearch/:collegeId" element={<ProjectCollegeSearch />} />
+        <Route path="/ProjectDepartmentSearch/:deptId" element={<ProjectDepartmentSearch />} />
+        <Route path="/ProjectProgramSearch/:programId" element={<ProjectProgramSearch />} />
 
         {/* University Details */}
         <Route path="/university/:id" element={<UniversityDetails />} />
+
+        {/* College Details */}
+        <Route path="/college/:id" element={<CollegeDetails />} />
+
 
         {/* Fallback */}
         <Route
           path="*"
           element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />}
         />
+
       </Routes>
     </BrowserRouter>
   );

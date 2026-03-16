@@ -153,14 +153,14 @@ class BranchAdmin(admin.ModelAdmin):
 
 @admin.register(College)
 class CollegeAdmin(admin.ModelAdmin):
-    list_display = ('cid', 'name_ar', 'name_en', 'branch', 'image_preview')
+    list_display = ('cid', 'name_ar', 'name_en', 'branch', 'image_preview','description')
     list_filter = ('branch__university', 'branch__city')
-    search_fields = ('name_ar', 'name_en', 'branch__university__uname_ar', 'branch__city__bname_ar')
+    search_fields = ('name_ar', 'name_en', 'branch__university__uname_ar', 'branch__city__bname_ar','description')
     autocomplete_fields = ('branch',)
     inlines = [CollegeProgressPatternInline]
 
     # Include image in the admin form
-    fields = ('name_ar', 'name_en', 'branch', 'image')
+    fields = ('name_ar', 'name_en', 'branch', 'image', 'description')  # add image field to the form
 
     # Customize file upload widget
     def formfield_for_dbfield(self, db_field, request, **kwargs):
