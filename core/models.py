@@ -437,6 +437,7 @@ class Project(models.Model):
     tools = models.TextField(blank=True, null=True)
     project_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=500)
+    title_en = models.CharField(max_length=500, blank=True, null=True)
     description = models.TextField()
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_projects')
     university = models.ForeignKey(University, on_delete=models.CASCADE, null=True, blank=True)

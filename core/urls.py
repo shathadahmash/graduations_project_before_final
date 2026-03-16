@@ -18,6 +18,11 @@ from core.views.location_views import ProgramViewSet
 
 from .views import get_csrf_token
 
+from core.views.ImportStudents import (
+    import_students_commit,
+    import_students_template,
+    import_students_validate,
+)
 
 from core.views import (
     RoleViewSet,
@@ -107,7 +112,11 @@ urlpatterns = [
 # Change these lines to add the trailing slash /
     path('import_projects_validate/', import_projects_validate, name='import-projects-validate'),
     path('import_projects_commit/', import_projects_commit, name='import-projects-commit'),
-    path('system/import/projects/template/', import_projects_template, name='import-projects-template'),
+    path('import-projects/template/', import_projects_template, name='import_projects_template'),
+    # students import
+    path('import-students/template/', import_students_template, name='import_students_template'),
+    path('import-students/validate/', import_students_validate, name='import_students_validate'),
+    path('import-students/commit/',   import_students_commit,   name='import_students_commit'),
 
 ]
 
