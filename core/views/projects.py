@@ -9,7 +9,7 @@ from django.db.models import Exists, OuterRef
 
 from core.models import (
     User, Group, Project, ApprovalRequest, Role, College, UserRoles,
-    AcademicAffiliation, ProjectState, GroupSupervisors, University
+    AcademicAffiliation, ProjectState, GroupSupervisors, University,GroupMembers
 )
 from core.serializers import ProjectSerializer
 from core.permissions import PermissionManager
