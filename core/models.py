@@ -669,6 +669,7 @@ class Notification(models.Model):
 class AcademicAffiliation(models.Model):
     affiliation_id = models.AutoField(primary_key=True)
     user = models.ForeignKey('User', on_delete=models.CASCADE)
+    Program = models.ForeignKey(Program, on_delete=models.CASCADE, blank=True, null=True)
     university = models.ForeignKey('University', on_delete=models.CASCADE)
     college = models.ForeignKey('College', on_delete=models.CASCADE, blank=True, null=True)
     department = models.ForeignKey('Department', on_delete=models.CASCADE, blank=True, null=True)
