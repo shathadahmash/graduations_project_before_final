@@ -437,6 +437,7 @@ class Project(models.Model):
     tools = models.TextField(blank=True, null=True)
     project_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=500)
+    title_en = models.CharField(max_length=500, blank=True, null=True)
     description = models.TextField()
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_projects')
     university = models.ForeignKey(University, on_delete=models.CASCADE, null=True, blank=True)
@@ -657,6 +658,7 @@ class Notification(models.Model):
 class AcademicAffiliation(models.Model):
     affiliation_id = models.AutoField(primary_key=True)
     user = models.ForeignKey('User', on_delete=models.CASCADE)
+    Program = models.ForeignKey(Program, on_delete=models.CASCADE, blank=True, null=True)
     university = models.ForeignKey('University', on_delete=models.CASCADE)
     college = models.ForeignKey('College', on_delete=models.CASCADE, blank=True, null=True)
     department = models.ForeignKey('Department', on_delete=models.CASCADE, blank=True, null=True)

@@ -9,7 +9,7 @@ from django.db.models import Exists, OuterRef
 
 from core.models import (
     User, Group, Project, ApprovalRequest, Role, College, UserRoles,
-    AcademicAffiliation, ProjectState, GroupSupervisors, University
+    AcademicAffiliation, ProjectState, GroupSupervisors, University,GroupMembers
 )
 from core.serializers import ProjectSerializer
 from core.permissions import PermissionManager
@@ -267,6 +267,23 @@ class ProjectViewSet(viewsets.ModelViewSet):
             )
 
         return Response(self.get_serializer(project).data)
+    
+    @action(detail=False, methods=["get"], url_path="public", permission_classes=[AllowAny])
+    def public_projects(self, request):
+     """
+     Public endpoint used for homepage statistics and browsing.
+     Returns all projects without role-based filtering.
+     """
+
+     qs = (
+        Project.objects
+        .select_related("state", "created_by", "college", "department", "program", "branch", "university")
+        .prefetch_related("groups", "groups__groupsupervisors__user")
+        .order_by("-start_date")
+     )
+
+     serializer = self.get_serializer(qs, many=True)
+     return Response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="propose-project")
     def propose_project(self, request):
@@ -475,3 +492,5 @@ def dropdown_data(request):
         "supervisors": [{"id": sp.id, "name": sp.name} for sp in supervisors],
         "assistants": [{"id": a.id, "name": a.name} for a in assistants],
     })
+
+

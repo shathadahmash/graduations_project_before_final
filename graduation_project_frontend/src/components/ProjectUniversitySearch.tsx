@@ -44,7 +44,7 @@ interface Props {
   universityId: number;
 }
 
-const ProjectSearch: React.FC<Props> = ({ universityId }) => {
+const ProjectUniversitySearch: React.FC<Props> = ({ universityId }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -274,4 +274,4 @@ const ProjectSearch: React.FC<Props> = ({ universityId }) => {
   );
 };
 
-export default ProjectSearch;
+export default ProjectUniversitySearch;

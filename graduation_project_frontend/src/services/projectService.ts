@@ -131,19 +131,44 @@ function mapBackendProject(raw: any): Project {
   };
 }
 export const projectService = {
-  async getProjects(params?: any) {
-    try {
-      const response = await api.get('projects/', { params });
-      console.log('[projectService] getProjects response:', response.data);
-      return (response.data as any[]).map(mapBackendProject);
-    } catch (error: any) {
-      console.error(
-        '[projectService] getProjects failed:',
-        error?.response?.data ?? error
-      );
-      return [];
-    }
+
+
+  
+ async getProjects(params?: any) {
+   try {
+    const response = await api.get('projects/', { params });
+    // normalize data: either plain array or { results: [...] }
+    const data = Array.isArray(response.data) ? response.data : response.data?.results || [];
+    console.log('[projectService] getProjects normalized data:', data);
+    return data.map(mapBackendProject);
+   } catch (error: any) {
+    console.error(
+      '[projectService] getProjects failed:',
+      error?.response?.data ?? error
+    );
+    return [];
+   }
   },
+  // Inside projectService
+// Inside projectService
+async getPublicProjects(params?: any) {
+  try {
+    // Pass params directly to the request
+    const response = await api.get('/projects/public/', { params });
+
+    // Normalize data: array or { results: [...] }
+    const data = Array.isArray(response.data) ? response.data : response.data?.results || [];
+
+    return data.map(mapBackendProject);
+  } catch (error: any) {
+    console.error(
+      '[projectService] getPublicProjects failed:',
+      error?.response?.data ?? error
+    );
+    return [];
+  }
+},
+
 
   async getProjectById(projectId: number) {
     try {
