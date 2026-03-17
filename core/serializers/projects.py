@@ -34,6 +34,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source="branch.name", read_only=True)
     department_name = serializers.CharField(source="department.name", read_only=True)
     program_name = serializers.CharField(source="program.p_name", read_only=True)
+    title_en = serializers.CharField(read_only=True)
 
     # URLs
     logo_url = serializers.SerializerMethodField()
@@ -86,6 +87,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
             "created_by",
             'average_rating',
+            "title_en",
         ]
     def get_average_rating(self, obj):
         avg = obj.ratings.aggregate(Avg('rating'))['rating__avg']
