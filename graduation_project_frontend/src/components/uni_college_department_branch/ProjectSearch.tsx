@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
 import { 
   FiCalendar, FiMapPin, FiBookOpen, FiTool, FiUser, FiUsers, 
   FiX, FiSearch, FiSliders, FiInfo, FiEye, FiFileText, 
@@ -72,6 +73,8 @@ interface Project {
   logo?: string;
   documentation?: string;
   groups?: Group[];
+  rating: number;        // متوسط التقييم من 0 إلى 5
+  ratings_count: number; // عدد التقييمات
 }
 
 interface FilterOptions {
@@ -316,7 +319,7 @@ const ProjectSearch: React.FC = () => {
       
       console.log(`📊 عدد المشاريع المستلمة: ${data.length}`);
       
-      // معالجة البيانات وتحويلها
+      // معالجة البيانات وتحويلها مع التقييمات
       const processedData = data.map((p: any) => {
         const universityName = p.university?.name || p.university_name || 'غير محدد';
         const branchName = p.branch?.name || p.branch_name || 'غير محدد';
@@ -326,6 +329,27 @@ const ProjectSearch: React.FC = () => {
         const stateName = p.state?.name || p.state || 'غير محدد';
         const externalCompanyName = p.external_company?.name || p.external_company;
         const logo = p.logo;
+
+        // ✅ قراءة التقييمات بشكل صحيح
+        let projectRating = 0;
+        let projectRatingsCount = 0;
+        
+        // التحقق من وجود التقييمات في البيانات
+        if (p.avg_rating !== undefined && p.avg_rating !== null) {
+          projectRating = Number(p.avg_rating);
+        } else if (p.average_rating !== undefined && p.average_rating !== null) {
+          projectRating = Number(p.average_rating);
+        } else if (p.rating !== undefined && p.rating !== null) {
+          projectRating = Number(p.rating);
+        }
+        
+        if (p.ratings_count !== undefined && p.ratings_count !== null) {
+          projectRatingsCount = Number(p.ratings_count);
+        } else if (p.total_ratings !== undefined && p.total_ratings !== null) {
+          projectRatingsCount = Number(p.total_ratings);
+        } else if (p.count !== undefined && p.count !== null) {
+          projectRatingsCount = Number(p.count);
+        }
 
         return {
           project_id: p.project_id || p.id,
@@ -348,9 +372,13 @@ const ProjectSearch: React.FC = () => {
           co_supervisor_name: p.co_supervisor_name,
           logo: logo,
           documentation: p.documentation,
-          groups: p.groups || []
+          groups: p.groups || [],
+          rating: projectRating,
+          ratings_count: projectRatingsCount
         };
       });
+
+      console.log("📊 أول مشروع بعد المعالجة:", processedData[0]);
 
       // تطبيق فلاتر إضافية للتأكد (في حال الـ API لا يطبق الفلاتر)
       let finalData = processedData;
@@ -589,7 +617,7 @@ const ProjectSearch: React.FC = () => {
         {showFilters && (
           <div className="bg-white rounded-2xl shadow-lg border border-[#312583]/10 p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* حقول الفلاتر - كما هي */}
+              {/* حقول الفلاتر */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-[#4a5568] mr-1">الجامعة</label>
                 <select 
@@ -834,6 +862,34 @@ const ProjectSearch: React.FC = () => {
                         <span className="text-[#312583] font-medium">المشرف:</span>
                         <span className="text-[#4a5568]">{p.supervisor_name}</span>
                       </div>
+                      
+                      {/* ✅ قسم التقييمات - معدل لعرض التقييمات بشكل صحيح */}
+                      {/* ✅ قسم التقييمات - عرض العدد بشكل صحيح */}
+<div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#312583]/10">
+  <div className="flex items-center">
+    {[1, 2, 3, 4, 5].map((star) => (
+      <FiStar
+        key={star}
+        size={16}
+        className={`${
+          star <= Math.round(p.rating)
+            ? "text-yellow-400 fill-yellow-400"
+            : "text-gray-300"
+        }`}
+      />
+    ))}
+  </div>
+  <span className="text-sm text-[#4a5568]">
+    {p.ratings_count > 0 ? (
+      `(${p.ratings_count} ${p.ratings_count === 1 ? 'تقييم' : 'تقييمات'})`
+    ) : p.rating > 0 ? (
+      // إذا كان هناك متوسط تقييم ولكن العدد 0 (خطأ في البيانات)
+      `(تقييم: ${p.rating.toFixed(1)})`
+    ) : (
+      '(لا توجد تقييمات)'
+    )}
+  </span>
+</div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 mt-auto">
@@ -860,7 +916,7 @@ const ProjectSearch: React.FC = () => {
           </>
         )}
 
-        {/* نافذة العرض السريع - كما هي */}
+        {/* نافذة العرض السريع */}
         {showModal && selectedProject && (
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
@@ -908,6 +964,35 @@ const ProjectSearch: React.FC = () => {
                 </div>
 
                 <div className="p-8 space-y-8">
+                  {/* ✅ عرض التقييمات في النافذة المنبثقة */}
+                  <div className="bg-gray-50 p-4 rounded-xl border border-[#312583]/10">
+                    <h3 className="text-lg font-bold text-[#312583] mb-3 flex items-center gap-2">
+                      <FiStar className="text-[#4a3fa0]" />
+                      تقييم المشروع
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <FiStar
+                            key={star}
+                            size={24}
+                            className={`${
+                              star <= Math.round(selectedProject.rating)
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xl font-bold text-[#312583]">
+                        {selectedProject.rating.toFixed(1)}
+                      </span>
+                      <span className="text-sm text-[#4a5568]">
+                        ({selectedProject.ratings_count} {selectedProject.ratings_count === 1 ? 'تقييم' : 'تقييمات'})
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="bg-gray-50 p-6 rounded-2xl border border-[#312583]/10">
                     <h3 className="text-lg font-bold text-[#312583] mb-3 flex items-center gap-2">
                       <FiInfo className="text-[#4a3fa0]" />
