@@ -13,10 +13,10 @@ import api from '../../services/api';
 
 // ** الألوان الأكاديمية - مطابقة لـ SystemManagerDashboard **
 const academicColors = {
-  primary: '#312583', // البنفسجي الأزرق الداكن
-  secondary: '#4a3fa0', // البنفسجي الأزرق الفاتح
-  accent: '#5d4db8', // البنفسجي الفاتح
-  background: '#ffffff', // خلفية بيضاء
+  primary: '#312583',
+  secondary: '#4a3fa0',
+  accent: '#5d4db8',
+  background: '#ffffff',
   paper: '#ffffff',
   text: '#1a1a2e',
   textLight: '#4a5568',
@@ -62,6 +62,8 @@ interface Project {
   logo?: string;
   documentation_path?: string | null;
   students?: Student[];
+  rating: number;        // متوسط التقييم
+  ratings_count: number; // عدد التقييمات
 }
 
 const ProjectDetails: React.FC = () => {
@@ -73,6 +75,9 @@ const ProjectDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [sendingRating, setSendingRating] = useState(false);
 
   const API_BASE_URL = 'http://localhost:8001';
 
@@ -87,10 +92,8 @@ const ProjectDetails: React.FC = () => {
   // دالة لاستخراج اسم الملف من المسار
   const getFileNameFromPath = (filePath: string): string => {
     if (!filePath) return '';
-    
     const cleanPath = filePath.split('?')[0];
     const fileName = cleanPath.split('/').pop() || '';
-    
     try {
       return decodeURIComponent(fileName);
     } catch {
@@ -131,8 +134,6 @@ const ProjectDetails: React.FC = () => {
       
       const groups = await projectService.getProjectGroups(projectId);
       
-      console.log('📦 البيانات المستلمة من API:', groups);
-      
       const studentsMap = new Map();
 
       if (Array.isArray(groups) && groups.length > 0) {
@@ -140,19 +141,11 @@ const ProjectDetails: React.FC = () => {
           group.project === projectId || group.project_id === projectId
         );
         
-        console.log(`📊 عدد المجموعات التي تخص المشروع ${projectId}:`, projectGroups.length);
-        
-        projectGroups.forEach((group: any, groupIndex: number) => {
-          console.log(`👥 المجموعة ${groupIndex + 1}:`, group);
-          
+        projectGroups.forEach((group: any) => {
           if (group.members && Array.isArray(group.members)) {
-            console.log(`👤 عدد الأعضاء في المجموعة ${groupIndex + 1}:`, group.members.length);
-            
-            group.members.forEach((member: any, memberIndex: number) => {
+            group.members.forEach((member: any) => {
               const user = member.user_detail;
               if (user && user.id) {
-                console.log(`👨‍🎓 العضو ${memberIndex + 1}:`, user);
-                
                 if (!studentsMap.has(user.id)) {
                   studentsMap.set(user.id, {
                     name: user.name || 
@@ -169,19 +162,13 @@ const ProjectDetails: React.FC = () => {
                 }
               }
             });
-          } else {
-            console.log(`⚠️ المجموعة ${groupIndex + 1} لا تحتوي على members`);
           }
         });
-      } else {
-        console.log('ℹ️ لا توجد مجموعات لهذا المشروع أو البيانات ليست مصفوفة');
       }
 
       const studentsList = Array.from(studentsMap.values());
       
-      console.log(`✅ تم العثور على ${studentsList.length} طالب للمشروع ${projectId}:`, studentsList);
       setStudents(studentsList);
-      
       setProject(prev => prev ? { ...prev, students: studentsList } : null);
       
     } catch (error) {
@@ -196,16 +183,6 @@ const ProjectDetails: React.FC = () => {
   const extractYear = (date: number | string): string => {
     if (!date) return 'غير محدد';
     return date.toString().substring(0, 4);
-  };
-
-  // دالة لتنسيق التاريخ
-  const formatDate = (date: number | string): string => {
-    if (!date) return 'غير محدد';
-    const dateStr = date.toString();
-    if (dateStr.length === 8) {
-      return `${dateStr.substring(6, 8)}/${dateStr.substring(4, 6)}/${dateStr.substring(0, 4)}`;
-    }
-    return dateStr;
   };
 
   // ترجمة نوع المشروع
@@ -335,7 +312,6 @@ const ProjectDetails: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {/* رقم الطالب */}
               {selectedStudent.id && (
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-[#312583]/10">
                   <div className="w-10 h-10 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center shadow-md">
@@ -348,7 +324,6 @@ const ProjectDetails: React.FC = () => {
                 </div>
               )}
 
-              {/* البريد الإلكتروني */}
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-[#312583]/10">
                 <div className="w-10 h-10 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center shadow-md">
                   <FiMail className="text-white" size={18} />
@@ -361,7 +336,6 @@ const ProjectDetails: React.FC = () => {
                 </div>
               </div>
 
-              {/* رقم الهاتف */}
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-[#312583]/10">
                 <div className="w-10 h-10 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center shadow-md">
                   <FiPhone className="text-white" size={18} />
@@ -374,7 +348,6 @@ const ProjectDetails: React.FC = () => {
                 </div>
               </div>
 
-              {/* الجنس */}
               {selectedStudent.gender && (
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-[#312583]/10">
                   <div className="w-10 h-10 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center shadow-md">
@@ -390,7 +363,6 @@ const ProjectDetails: React.FC = () => {
                 </div>
               )}
 
-              {/* الرقم الوطني */}
               {selectedStudent.cid && (
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-[#312583]/10">
                   <div className="w-10 h-10 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center shadow-md">
@@ -409,17 +381,114 @@ const ProjectDetails: React.FC = () => {
     );
   };
 
+  // دالة إرسال التقييم
+  const sendRating = async (value: number) => {
+    if (!project) return;
+
+    try {
+      setSendingRating(true);
+
+      const res = await api.post('/ratings/', {
+        project: project.project_id,
+        rating: value
+      });
+
+      console.log("✅ تم التقييم:", res.data);
+
+      // تحديث المشروع مع التقييم الجديد
+      setProject((prev: Project | null) =>
+        prev
+          ? {
+              ...prev,
+              rating: res.data.average || res.data.average_rating || value,
+              ratings_count: 1
+            }
+          : prev
+      );
+
+      setUserRating(value);
+      
+    } catch (error: any) {
+      console.log("❌ ERROR:", error.response?.data || error.message);
+      
+      if (error.response?.status === 400) {
+        alert("لقد قمت بتقييم هذا المشروع مسبقاً");
+      }
+    } finally {
+      setSendingRating(false);
+    }
+  };
+
   // جلب بيانات المشروع
   useEffect(() => {
     const fetchProject = async () => {
       try {
         setLoading(true);
         const response = await projectService.getProjectById(Number(id));
-        setProject(response);
         
-        if (response?.project_id) {
-          await fetchProjectStudents(response.project_id);
+        // معالجة البيانات مثل ProjectSearch
+        const p = response;
+        
+        // قراءة التقييمات بشكل صحيح
+        let projectRating = 0;
+        let projectRatingsCount = 0;
+        
+        if (p.avg_rating !== undefined && p.avg_rating !== null) {
+          projectRating = Number(p.avg_rating);
+        } else if (p.average_rating !== undefined && p.average_rating !== null) {
+          projectRating = Number(p.average_rating);
+        } else if (p.rating !== undefined && p.rating !== null) {
+          projectRating = Number(p.rating);
         }
+        
+        if (p.ratings_count !== undefined && p.ratings_count !== null) {
+          projectRatingsCount = Number(p.ratings_count);
+        } else if (p.total_ratings !== undefined && p.total_ratings !== null) {
+          projectRatingsCount = Number(p.total_ratings);
+        } else if (p.count !== undefined && p.count !== null) {
+          projectRatingsCount = Number(p.count);
+        }
+
+        const projectData = {
+          project_id: p.project_id || p.id,
+          title: p.title || 'بدون عنوان',
+          description: p.description || '',
+          project_type: p.project_type || 'غير محدد',
+          state: p.state || 'غير محدد',
+          field: p.field || 'غير محدد',
+          tools: p.tools || 'غير محدد',
+          university_name: p.university?.name || p.university_name || 'غير محدد',
+          branch_name: p.branch?.name || p.branch_name || 'غير محدد',
+          college_name: p.college?.name || p.college_name || 'غير محدد',
+          department_name: p.department?.name || p.department_name,
+          program_name: p.program?.name || p.program_name,
+          start_date: p.start_date,
+          end_date: p.end_date,
+          external_company: p.external_company?.name || p.external_company,
+          supervisor_name: p.supervisor_name || 'غير محدد',
+          co_supervisor_name: p.co_supervisor_name,
+          logo: p.logo,
+          documentation_path: p.documentation_path,
+          students: [],
+          rating: projectRating,
+          ratings_count: projectRatingsCount
+        };
+        
+        setProject(projectData);
+
+        if (p?.project_id) {
+          await fetchProjectStudents(p.project_id);
+        }
+
+        // جلب تقييم المستخدم الحالي
+        try {
+          const ratingRes = await projectService.getRatings(p.project_id);
+          console.log("📊 بيانات تقييم المستخدم:", ratingRes);
+          setUserRating(ratingRes.user_rating || 0);
+        } catch (ratingError) {
+          console.log("لا يوجد تقييم للمستخدم");
+        }
+
       } catch (error) {
         console.error('خطأ في جلب بيانات المشروع:', error);
       } finally {
@@ -524,8 +593,66 @@ const ProjectDetails: React.FC = () => {
                   {project.title}
                 </h1>
 
-                {/* معلومات سريعة في بطاقات - تظهر هنا سنة البداية والنهاية مرة واحدة فقط */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                {/* ⭐ عرض التقييمات - مثل ProjectSearch */}
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <FiStar
+                        key={star}
+                        size={20}
+                        className={`${
+                          star <= Math.round(project.rating)
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-[#4a5568] mr-2">
+                    {project.ratings_count > 0 ? (
+                      `(${project.ratings_count} ${project.ratings_count === 1 ? 'تقييم' : 'تقييمات'})`
+                    ) : project.rating > 0 ? (
+                      `(تقييم: ${project.rating.toFixed(1)})`
+                    ) : (
+                      '(لا توجد تقييمات)'
+                    )}
+                  </span>
+                </div>
+
+                {/* ⭐ تقييم المشروع (النجوم القابلة للضغط) */}
+                <div className="flex items-center gap-3 mb-6 border-t border-[#312583]/10 pt-4">
+                  <span className="text-sm text-[#4a5568]">قيّم هذا المشروع:</span>
+
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <FiStar
+                        key={star}
+                        size={26}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => sendRating(star)}
+                        className={`cursor-pointer transition-all hover:scale-110 ${
+                          (hoverRating || userRating) >= star
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-300 hover:text-yellow-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {sendingRating && (
+                    <FiLoader className="animate-spin text-[#4a3fa0]" size={18} />
+                  )}
+                  
+                  {userRating > 0 && (
+                    <span className="text-xs text-green-600 mr-2 bg-green-50 px-2 py-1 rounded-full">
+                      تقييمك: {userRating} نجوم
+                    </span>
+                  )}
+                </div>
+
+                {/* معلومات سريعة في بطاقات */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-gray-50 p-4 rounded-xl border border-[#312583]/10">
                     <FiCalendar className="text-[#4a3fa0] mb-2" size={20} />
                     <p className="text-xs text-[#4a5568]">سنة البداية</p>
@@ -544,11 +671,17 @@ const ProjectDetails: React.FC = () => {
                     <p className="font-bold text-[#312583] truncate">{project.supervisor_name}</p>
                   </div>
                   
-                  {project.co_supervisor_name && (
+                  {project.co_supervisor_name ? (
                     <div className="bg-gray-50 p-4 rounded-xl border border-[#312583]/10">
                       <FiUsers className="text-[#4a3fa0] mb-2" size={20} />
                       <p className="text-xs text-[#4a5568]">مشرف مساعد</p>
                       <p className="font-bold text-[#4a3fa0] truncate">{project.co_supervisor_name}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 p-4 rounded-xl border border-[#312583]/10 opacity-50">
+                      <FiUsers className="text-[#4a3fa0] mb-2" size={20} />
+                      <p className="text-xs text-[#4a5568]">مشرف مساعد</p>
+                      <p className="font-bold text-[#4a5568]">لا يوجد</p>
                     </div>
                   )}
                 </div>
@@ -557,11 +690,10 @@ const ProjectDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* شبكة المعلومات التفصيلية */}
+        {/* باقي الكود كما هو... */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* العمود الأيمن - معلومات المؤسسة */}
           <div className="lg:col-span-1 space-y-6">
-            {/* بطاقة الجامعة والكلية */}
             <div className="bg-white rounded-xl shadow-lg shadow-[#312583]/5 p-6 border border-[#312583]/10">
               <h3 className="text-xl font-bold text-[#312583] mb-4 flex items-center gap-2">
                 <FiMapPin className="text-[#4a3fa0]" />
@@ -609,7 +741,6 @@ const ProjectDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* بطاقة المجال والأدوات */}
             <div className="bg-white rounded-xl shadow-lg shadow-[#312583]/5 p-6 border border-[#312583]/10">
               <h3 className="text-xl font-bold text-[#312583] mb-4 flex items-center gap-2">
                 <FiBriefcase className="text-[#4a3fa0]" />
@@ -644,7 +775,6 @@ const ProjectDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* زر العودة */}
             <button
               onClick={() => navigate(-1)}
               className="w-full py-3 bg-gradient-to-r from-[#312583] to-[#4a3fa0] text-white rounded-xl font-bold hover:shadow-lg hover:shadow-[#312583]/20 transition-all flex items-center justify-center gap-2"
@@ -656,7 +786,6 @@ const ProjectDetails: React.FC = () => {
 
           {/* العمود الأيسر - ملخص المشروع والطلاب والتوثيق */}
           <div className="lg:col-span-2 space-y-6">
-            {/* ملخص المشروع */}
             <div className="bg-white rounded-xl shadow-lg shadow-[#312583]/5 p-6 border border-[#312583]/10">
               <h3 className="text-xl font-bold text-[#312583] mb-4 flex items-center gap-2">
                 <FiBookOpen className="text-[#4a3fa0]" />
@@ -669,7 +798,6 @@ const ProjectDetails: React.FC = () => {
               </div>
             </div>
 
-            {/* الطلاب المشاركون */}
             <div className="bg-white rounded-xl shadow-lg shadow-[#312583]/5 p-6 border border-[#312583]/10">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-[#312583] flex items-center gap-2">
@@ -693,76 +821,53 @@ const ProjectDetails: React.FC = () => {
                 </div>
               ) : students.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {students.map((student, index) => {
-                    const hasEmail = student.email && student.email !== "لا يوجد" && student.email !== "";
-                    const hasPhone = student.phone && student.phone !== "لا يوجد" && student.phone !== "";
-                    
-                    return (
-                      <div 
-                        key={index} 
-                        onClick={() => {
-                          setSelectedStudent(student);
-                          setShowStudentModal(true);
-                        }}
-                        className="flex items-center gap-3 p-4 rounded-lg border border-[#312583]/10 bg-gray-50 hover:shadow-md hover:border-[#312583]/30 transition-all cursor-pointer group"
-                      >
-                        <div className="w-12 h-12 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center text-white font-bold text-lg group-hover:scale-105 transition-transform shadow-md">
-                          {student.name?.charAt(0) || 'ط'}
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-[#312583] text-base">{student.name}</p>
-                          <div className="flex items-center gap-3 mt-1 text-xs">
-                            {hasEmail ? (
-                              <div className="flex items-center gap-1 text-[#4a5568]">
-                                <FiMail size={12} className="text-[#4a3fa0]" />
-                                <span className="truncate max-w-[100px]">{student.email}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 text-[#4a5568]">
-                                <FiMail size={12} className="text-[#4a5568]" />
-                                <span>لا يوجد بريد</span>
-                              </div>
-                            )}
-                            {hasPhone ? (
-                              <div className="flex items-center gap-1 text-[#4a5568]">
-                                <FiPhone size={12} className="text-[#4a3fa0]" />
-                                <span>{student.phone}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1 text-[#4a5568]">
-                                <FiPhone size={12} className="text-[#4a5568]" />
-                                <span>لا يوجد هاتف</span>
-                              </div>
-                            )}
-                          </div>
-                          {student.id && (
-                            <p className="text-xs text-[#4a5568] mt-1">رقم: {student.id}</p>
+                  {students.map((student, index) => (
+                    <div 
+                      key={index} 
+                      onClick={() => {
+                        setSelectedStudent(student);
+                        setShowStudentModal(true);
+                      }}
+                      className="flex items-center gap-3 p-4 rounded-lg border border-[#312583]/10 bg-gray-50 hover:shadow-md hover:border-[#312583]/30 transition-all cursor-pointer group"
+                    >
+                      <div className="w-12 h-12 bg-gradient-to-br from-[#312583] to-[#4a3fa0] rounded-full flex items-center justify-center text-white font-bold text-lg group-hover:scale-105 transition-transform shadow-md">
+                        {student.name?.charAt(0) || 'ط'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-[#312583] text-base">{student.name}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs">
+                          {student.email && student.email !== "لا يوجد" ? (
+                            <div className="flex items-center gap-1 text-[#4a5568]">
+                              <FiMail size={12} className="text-[#4a3fa0]" />
+                              <span className="truncate max-w-[100px]">{student.email}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-[#4a5568]">
+                              <FiMail size={12} className="text-[#4a5568]" />
+                              <span>لا يوجد بريد</span>
+                            </div>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-12 bg-gray-50 rounded-lg border border-[#312583]/10">
                   <FiUsers className="mx-auto mb-3 text-[#4a3fa0] opacity-50" size={40} />
                   <p className="text-[#312583] font-medium">لا يوجد طلاب مشاركين في هذا المشروع</p>
-                  <p className="text-sm text-[#4a5568] mt-1">يمكن إضافة الطلاب لاحقاً</p>
                 </div>
               )}
             </div>
 
-            {/* ملف التوثيق */}
             <div className="bg-white rounded-xl shadow-lg shadow-[#312583]/5 p-6 border border-[#312583]/10">
               <h3 className="text-xl font-bold text-[#312583] mb-4 flex items-center gap-2">
                 <FiFileText className="text-[#4a3fa0]" />
                 ملف التوثيق
               </h3>
-              
               {renderDocumentation(project.documentation_path)}
             </div>
 
-            {/* معلومات إضافية - بدون تكرار للتواريخ ✅ */}
             <div className="bg-white rounded-xl shadow-lg shadow-[#312583]/5 p-6 border border-[#312583]/10">
               <h3 className="text-xl font-bold text-[#312583] mb-4 flex items-center gap-2">
                 <FiInfo className="text-[#4a3fa0]" />
@@ -782,10 +887,8 @@ const ProjectDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* نافذة تفاصيل الطالب */}
       <StudentDetailsModal />
 
-      {/* إضافة تنسيقات إضافية */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }

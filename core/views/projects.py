@@ -7,13 +7,16 @@ import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Exists, OuterRef
 
+
 from core.models import (
     User, Group, Project, ApprovalRequest, Role, College, UserRoles,
-    AcademicAffiliation, ProjectState, GroupSupervisors, University
+    AcademicAffiliation, ProjectState, GroupSupervisors, University, ProjectRating  
 )
 from core.serializers import ProjectSerializer
 from core.permissions import PermissionManager
 import logging
+from core.serializers import ProjectRatingSerializer
+
 
 logger = logging.getLogger(__name__)
 
@@ -475,3 +478,19 @@ def dropdown_data(request):
         "supervisors": [{"id": sp.id, "name": sp.name} for sp in supervisors],
         "assistants": [{"id": a.id, "name": a.name} for a in assistants],
     })
+class ProjectRatingViewSet(viewsets.ModelViewSet):
+    queryset = ProjectRating.objects.all()
+    serializer_class = ProjectRatingSerializer
+
+    def create(self, request, *args, **kwargs):
+        ip = request.META.get('REMOTE_ADDR')
+        project_id = request.data.get('project')
+
+        if ProjectRating.objects.filter(project_id=project_id, ip_address=ip).exists():
+            return Response(
+                {"error": "لقد قمت بتقييم هذا المشروع مسبقًا"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        request.data['ip_address'] = ip
+        return super().create(request, *args, **kwargs)

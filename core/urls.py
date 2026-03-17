@@ -14,6 +14,8 @@ from .views.import_projects import (
 )
 
 from .views import get_csrf_token
+from .views import ProjectRatingViewSet
+
 
 from core.views.groups import GroupProgramViewSet
 from core.views.location_views import (
@@ -74,6 +76,8 @@ router.register(r'branches', BranchViewSet, basename='branches')
 router.register(r'university-colleges', universitycollegeviewset, basename='university-colleges')
 router.register(r'students', StudentViewSet, basename='students')
 router.register(r'cities', CityViewSet, basename='cities')
+router.register(r'ratings', ProjectRatingViewSet)
+
 router.register(
     r'fetch-related-to-university',
     FetchRelatedToUniversity,

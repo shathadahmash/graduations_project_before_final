@@ -2,6 +2,7 @@ import api from './api';
 import { bulkFetch } from './bulkService';
 import { groupService } from './groupService';
 
+
 // Basic supervisor interface
 export interface Supervisor {
   id: number;
@@ -61,6 +62,8 @@ export interface Project {
 
   supervisor_name?: string | null;
   co_supervisor_name?: string | null;
+  rating?: number;
+  ratings_count?: number;
 
   created_by?: any;
 }
@@ -114,6 +117,8 @@ function mapBackendProject(raw: any): Project {
 
     groups: groups,
     members: members,
+    rating: Number(raw.rating || raw.average_rating || 0),
+    ratings_count: raw.ratings_count || raw.total_ratings || 0,
 
     created_by: creator
       ? {
@@ -210,6 +215,32 @@ async getProjectGroups(projectId: number) {
       console.error('[projectService] فشل المسار البديل:', fallbackError);
       return [];
     }
+  }
+},
+async getRatings(projectId: number): Promise<{ average: number; count: number }> {
+  try {
+    const response = await api.get('/ratings/', {
+      params: { project: projectId }
+    });
+
+    const ratings = Array.isArray(response.data)
+      ? response.data
+      : response.data?.results || [];
+
+    const count = ratings.length;
+
+    const total = ratings.reduce(
+      (sum: number, r: any) => sum + (r.rating || 0),
+      0
+    );
+
+    const average = count > 0 ? total / count : 0;
+
+    return { average, count };
+
+  } catch (err) {
+    console.error('[projectService] getRatings failed', err);
+    return { average: 0, count: 0 };
   }
 },
   async searchProjects(query: string, params?: any) {
@@ -435,4 +466,15 @@ async getProgramProjects(programId: number) {
     const data = await bulkFetch(req);
     return data;
   },
+};
+// جلب التقييمات لمشروع معين
+export const getRatings = async (projectId: number) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}ratings/?project=${projectId}`);
+    const data = await response.json();
+    return data; // متوقع مصفوفة من التقييمات
+  } catch (err) {
+    console.error('خطأ في جلب التقييمات', err);
+    return [];
+  }
 };
