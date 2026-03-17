@@ -32,6 +32,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     branch_name = serializers.CharField(source="branch.name", read_only=True)
     department_name = serializers.CharField(source="department.name", read_only=True)
     program_name = serializers.CharField(source="program.p_name", read_only=True)
+    title_en = serializers.CharField(read_only=True)
 
     # URLs
     logo_url = serializers.SerializerMethodField()
@@ -83,6 +84,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "groups",
 
             "created_by",
+            "title_en",
         ]
 
     # ---------------------------
