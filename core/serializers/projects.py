@@ -86,8 +86,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             "groups",
 
             "created_by",
-            "title_en",
             'average_rating',
+            "title_en",
         ]
     def get_average_rating(self, obj):
         avg = obj.ratings.aggregate(Avg('rating'))['rating__avg']

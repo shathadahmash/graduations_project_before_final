@@ -270,6 +270,7 @@ async getRatings(projectId: number): Promise<{ average: number; count: number }>
     return { average: 0, count: 0 };
   }
 },
+  
   async searchProjects(query: string, params?: any) {
     try {
       const response = await api.get('/projects/search/', {
